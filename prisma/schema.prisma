@@ -1,0 +1,21 @@
+//prisma/schema.prisma
+// Prisma schema docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Photo {
+    id        Int     @id @default(autoincrement())
+    title     String
+    image     String
+    caption   String?
+    featured  Boolean @default(false)
+    createdAt DateTime @default(now())
+}

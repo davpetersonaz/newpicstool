@@ -1,0 +1,20 @@
+<!-- src/views/index.ejs -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <%- include('partials/header') %>
+    <main>
+        <h1><%= title %></h1>
+        <img src="/images/feature.jpg" alt="Featured Photo" class="featured-image">
+        <section class="bio">
+        <h2>About Harley</h2>
+        <p><%= bio %></p>
+        </section>
+    </main>
+    <%- include('partials/footer') %>
+</body>
+</html>

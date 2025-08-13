@@ -1,0 +1,57 @@
+/* public/css/style.css */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+header {
+    background-color: black;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header a {
+    color: white;
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+header form input {
+    padding: 5px;
+}
+
+header form button {
+    padding: 5px 10px;
+}
+
+footer {
+    background-color: black;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+.featured-image {
+    max-width: 80%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+}
+
+.bio {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+main {
+    padding-bottom: 60px; /* Space for fixed footer */
+}

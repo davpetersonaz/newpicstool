@@ -1,0 +1,10 @@
+build/
+dist/
+.env
+node_modules
+npm-debug.log
+package-lock.json
+prisma/*.db
+prisma/dev.db-journal
+/public/images
+/src/generated/prisma

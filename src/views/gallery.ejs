@@ -1,0 +1,25 @@
+<!-- /src/views/gallery.ejs -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+    <body>
+        <h1><%= title %></h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/bio">Bio</a>
+            <a href="/gallery">Gallery</a>
+            <a href="/best">Best Moments</a>
+        </nav>
+        <div class="gallery">
+            <% galleries.forEach(gallery => { %>
+            <div class="gallery-item">
+                <img src="<%= gallery.image %>" alt="<%= gallery.title %>">
+                <p><%= gallery.caption %></p>
+            </div>
+            <% }); %>
+        </div>
+    </body>
+</html>
