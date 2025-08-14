@@ -1,15 +1,15 @@
 <!-- /src/views/partials/header.ejs -->
-<header style="background-color: black; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
-    <div>
-        <a href="/" style="color: white; text-decoration: none; font-size: 1.5em;">Little Man Harley</a>
-        <nav style="display: inline; margin-left: 20px;">
-        <a href="/bio" style="color: white; margin: 0 10px;">Bio</a>
-        <a href="/gallery" style="color: white; margin: 0 10px;">Gallery</a>
-        <a href="/best" style="color: white; margin: 0 10px;">Best Moments</a>
+<header class="header">
+    <div class="link_area">
+        <a href="/" class="home_link">Little Man Harley</a>
+        <nav class="nav_bar">
+            <a href="/bio" class="nav_button">Bio</a>
+            <a href="/gallery" class="nav_button">Gallery</a>
+            <a href="/best" class="nav_button">Best Moments</a>
         </nav>
     </div>
-    <form action="/search" method="GET">
-        <input type="text" name="q" placeholder="Search photos..." style="padding: 5px;">
-        <button type="submit" style="padding: 5px 10px;">Search</button>
+    <form class="search_form" action="/search" method="GET">
+        <input class="search_input" type="text" name="q" placeholder="Search photos...">
+        <button class="search_button" type="submit">Search</button>
     </form>
 </header>

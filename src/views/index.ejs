@@ -1,20 +1,28 @@
 <!-- src/views/index.ejs -->
 <!DOCTYPE html>
 <html>
-<head>
-    <title><%= title %></title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    <%- include('partials/header') %>
-    <main>
-        <h1><%= title %></h1>
-        <img src="/images/feature.jpg" alt="Featured Photo" class="featured-image">
-        <section class="bio">
-        <h2>About Harley</h2>
-        <p><%= bio %></p>
-        </section>
-    </main>
-    <%- include('partials/footer') %>
-</body>
+    <head>
+        <title><%= title %></title>
+        <link rel="stylesheet" href="/css/style.css">
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <%- include('partials/header') %>
+        <main>
+            <h4>Welcome to the website that celebrates the life and times of</h4>
+            <h1><%= title %></h1>
+            <h3>R.I.P.</h3>
+            <img src="/images/feature.jpg" alt="Featured Photo" class="featured_image">
+            <section class="bio">
+                <p>Harley was a great little dog, he walked around with the air of a little man, very independent, wanted to explore every nook and crevice for different smells, and, of course, possibly a crumb left by someone that he could eat, and it was always better than eating his own dogfood. The little man was a legendary lap-sitter, he could lay so still and conform so well to your legs that you would forget he was laying on you. Always curious, always confused, always interested ... that was My Little Man Harley.</p>
+                <p>He came into my life about a year after I found My Boy Dino, a wonderful Aussie/Chow/Rot/Cattle/German/plus dog, my lady at the time wanted a dog "for her" and I could not argue, and her search narrowed in time to a Maltese, and then we found Harley. He was rescued from an elderly lady that had 17 Yorkies and Malteses running around, as well as many many cats. After she died, her daughter couldn't manage the horde and gave them to a motorcycle group that loved dogs, and they proceeded to sell them off. We were told Harley loved sitting in the sidecar of a motorcycle and thus acquired the name Harley, I didn't see any reason to change his name. On the afternoon we met him for the first time, Dino put his huge face right up to his, it was a good moment, they became great friends.</p>
+                <p>Through the years, Harley was both fun and challenging, I had to train him not to bark (read: 'yipe') every time he wanted something, and getting him to eat his food was always difficult (because everything else BUT his food was obviously better). But his hours of warming my lap, and making me laugh with the hilarious ways he would sleep (snore), and seeing him resting his head on my pillow next to me when I woke up in the middle of the night, and napping under his blankie on his dogbed on my desk as I work, those moments were priceless.</p>
+                <p>Harley's trademark, of course, was the dangling tongue. And yes, it was a result of getting his teeth pulled, the horder-lady didn't exactly take good care of her horde and his teeth were rotten when we got him. The tongue didn't come out right away, but slowly it started hanging out more and more, and was a source of extreme enjoyment for those that saw him. It didn't come without setbacks though, there was once in AZ when we were out camping that he got "tongue-burnt", it healed very quickly and he didn't show any discomfort.</p>
+                <p>Harley was a trooper, we would go on long hikes and he would always be trotting along next to the rest of our pack, when you looked down on him he would kinda resemble a centipede because his body wouldn't move much but his little legs would be swinging back and forth in a blur. He was fearless when it came to meeting other dogs, but largely indifferent as he'd walk off and sniff an arbitrary blade of grass for 3 minutes.</p>
+                <p>In Arizona, we would always end our walks at Meyer Park where I would let the dogs off leash to greet their daily friends every morning, they loved the off-leash time. Now here in Oregon we walked up to Morse Ranch dogpark every day, and that was his playpen for 3 years as he got to know all the dogs, and every square inch of the perimeter (there might be scraps laying around somewhere), and the humans that would bend down far enough to pet him.</p>
+                <p>The little guy succumbed to cancer in October 2020. When I got him they estimated his age at 2-to-5 years (probably on the far side considering his teeth), I was with him for 11 years after that, so I'm assuming he was around 16 when he passed, not the best for a little guy, but the Big C took him when he was still active and vibrant, which is unfortunate. I will miss the little man, he made a mark on my life.</p>
+            </section>
+        </main>
+        <%- include('partials/footer') %>
+    </body>
 </html>

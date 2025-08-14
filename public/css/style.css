@@ -1,57 +1,105 @@
 /* public/css/style.css */
 body {
+    background-color: #E1E3E1;
+    color: #212529;
+    font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 16px;
     margin: 0;
-    font-family: Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; /* Smooth fonts on WebKit browsers */
+    -moz-osx-font-smoothing: grayscale; /* Smooth fonts on Firefox */
 }
 
-header {
+.header {
+    align-items: center;
     background-color: black;
     color: white;
-    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    padding: 10px 20px;
 }
 
-header a {
+.header a {
     color: white;
+    margin: 0 10px;
     text-decoration: none;
+}
+
+.header a.home_link {
+    font-size: 1.5em;
+}
+
+.header .nav_bar {
+    display: inline;
+    margin-left: 20px;
+}
+
+.header .nav_button {
+    color: white;
     margin: 0 10px;
 }
 
-header form input {
+.header .search_input {
     padding: 5px;
 }
 
-header form button {
+.header .search_button {
     padding: 5px 10px;
 }
 
-footer {
+.footer {
+    align-items: center;
     background-color: black;
+    bottom: 0;
     color: white;
-    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    padding: 10px 20px;
     position: fixed;
-    bottom: 0;
     width: 100%;
 }
 
-.featured-image {
-    max-width: 80%;
-    height: auto;
-    display: block;
-    margin: 20px auto;
-}
-
-.bio {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 0 20px;
+.footer .login_button {
+    color: white;
+    text-decoration: none;
 }
 
 main {
-    padding-bottom: 60px; /* Space for fixed footer */
+    padding: 20px 0 80px 0; /* Space for fixed header/footer */
+    text-align: center;
+}
+
+main h1, main h3, main h4 {
+    margin: 15px 0; /* Space between headings */
+    line-height: 1.4; /* Open, readable line height */
+}
+
+main h1 {
+    font-size: 2.5em; /* Large for prominence */
+    font-weight: 600; /* Medium weight for friendliness */
+}
+
+main h3 {
+    font-size: 1.5em;
+    font-weight: 400; /* Lighter for softness */
+}
+
+main h4 {
+    font-size: 1.2em;
+    font-weight: 400; /* Lighter for welcoming text */
+}
+
+.featured_image {
+    border: black 3px solid;
+    border-radius: 10px;
+    display: block;
+    height: auto;
+    margin: 30px auto;
+    max-width: 80%;
+    padding: 2px;
+}
+
+.bio {
+    margin: 20px auto;
+    max-width: 80%;
+    padding: 0 20px;
 }
