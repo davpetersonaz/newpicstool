@@ -31,6 +31,7 @@ app.locals.prisma = prisma;
 
 // Routes
 app.use('/', indexRoutes);
+app.use('/pictures', indexRoutes);
 app.use('/admin', adminRoutes);
 
 // Error handling

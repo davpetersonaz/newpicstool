@@ -103,3 +103,36 @@ main h4 {
     max-width: 80%;
     padding: 0 20px;
 }
+
+/* Gallery styles */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    padding: 20px 0; /* Match main padding */
+}
+
+.gallery-item {
+    align-items: center;
+    background-color: black; /* Black background for contrast */
+    border: 2px solid black; /* Black border around each image */
+    border-radius: 8px; /* Consistent with site’s rounded corners */
+    display: flex;
+    flex-direction: column;
+    text-align: center; /* Center image and text */
+}
+
+.gallery-item img {
+    border-radius: 4px; /* Slightly smaller radius for image */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    height: 250px; /* Fixed height for all images */
+    object-fit: contain; /* Ensure full image is visible */
+    width: auto; /* varying widths */
+}
+
+.gallery-item .filename {
+    color: white; /* White text on black background */
+    margin-top: 8px;
+    padding: 0 10px 10px 10px; /* Space inside border */
+}
