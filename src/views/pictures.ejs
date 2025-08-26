@@ -10,7 +10,11 @@
 <body>
     <%- include('partials/header') %>
     <main>
-        <h1>LittleManHarley Pictures</h1>
+        <div class="sort-buttons">
+            <a href="/pictures?sort=chrono" class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
+            <a href="/pictures?sort=alpha" class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
+            <a href="/pictures?sort=random" class="sort-button <%= sort === 'random' ? 'active' : '' %>">Shuffle the Order</a>
+        </div>
         <div class="gallery">
             <% images.forEach(image => { %>
                 <div class="gallery-item">

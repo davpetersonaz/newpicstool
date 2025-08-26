@@ -3,6 +3,7 @@ import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import ExifReader from 'exifreader';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -23,18 +24,54 @@ router.get('/pictures', async (req, res) => {
 
         // Filter for common image file extensions
         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-        const images = files
-            .filter(file => imageExtensions.includes(path.extname(file).toLowerCase()))
-            .map(file => ({
-                src: `/images/${file}`,
-                name: path.basename(file, path.extname(file))
-        })); // Relative path for serving
+        const images = await Promise.all(
+            files
+                .filter(file => imageExtensions.includes(path.extname(file).toLowerCase()))
+                .map(async file => {
+                    const filePath = path.join(imagesDir, file);
+                    const stats = await fs.stat(filePath);
+                    let createdAt = stats.birthtime; // Default to file birthtime
 
-        // Randomize the images
-        const randomizedImages = shuffleArray([...images]);
+                    // Try to get EXIF date
+                    try {
+                        const exifData = await ExifReader.load(filePath);
+                        const exifDate = exifData.DateTimeOriginal?.value || exifData.DateTime?.value;
+                        if (exifDate) {
+                            // Parse EXIF date (e.g., "2023:04:15 12:00:00")
+                            const dateStr = exifData.DateTimeOriginal?.value || exifData.DateTime?.value
+                            const parsedDate = new Date(dateStr.replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+                            if (!isNaN(parsedDate)) {
+                                createdAt = parsedDate;
+                            }
+                        }
+                    } catch (exifError) {
+                        console.warn(`No EXIF data for ${file}: ${exifError.message}`);
+                    }
 
-        // Render the EJS template with the images
-        res.render('pictures', { images: randomizedImages });
+                    return {
+                        src: `/images/${file}`,
+                        name: path.basename(file, path.extname(file)),
+                        createdAt
+                    };
+                })
+        );
+
+        // Get sort parameter (default: random)
+        const sort = req.query.sort || 'random';
+        let sortedImages = [...images];
+
+        // Sort images based on query parameter
+        if (sort === 'alpha') {
+            sortedImages.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sort === 'chrono') {
+            sortedImages.sort((a, b) => a.createdAt - b.createdAt);
+        } else {
+            // Default: random
+            sortedImages = shuffleArray(sortedImages);
+        }
+
+        // Render the EJS template with the images and current sort
+        res.render('pictures', { images: sortedImages, sort });
     } catch (err) {
         console.error(err);
         res.status(500).send('Error loading images');
