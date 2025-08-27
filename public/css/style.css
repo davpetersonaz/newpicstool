@@ -116,7 +116,7 @@ main h4 {
 .gallery-item {
     align-items: center;
     background-color: black; /* Black background for contrast */
-    border: 2px solid black; /* Black border around each image */
+    border: 3px solid black; /* Black border around each image */
     border-radius: 8px; /* Consistent with site’s rounded corners */
     display: flex;
     flex-direction: column;
