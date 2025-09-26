@@ -78,6 +78,12 @@ main h1 {
     font-weight: 600; /* Medium weight for friendliness */
 }
 
+main h2 {
+    font-size: 1.8em;
+    margin: 15px 0;
+    font-weight: 600;
+}
+
 main h3 {
     font-size: 1.5em;
     font-weight: 400; /* Lighter for softness */
@@ -86,6 +92,12 @@ main h3 {
 main h4 {
     font-size: 1.2em;
     font-weight: 400; /* Lighter for welcoming text */
+}
+
+main p {
+    font-size: 1.1em;
+    margin: 10px 0;
+    color: #333;
 }
 
 .featured_image {
@@ -104,7 +116,7 @@ main h4 {
     padding: 0 20px;
 }
 
-/* Gallery styles */
+/* gallery styles */
 .gallery {
     display: flex;
     flex-wrap: wrap;
@@ -131,10 +143,59 @@ main h4 {
     width: auto; /* varying widths */
 }
 
+.gallery-image {
+    /* max-width: 100%; */
+    /* height: auto; */
+    cursor: pointer; /* Indicate the image is clickable */
+}
+
 .gallery-item .filename {
     color: white; /* White text on black background */
     margin-top: 8px;
     padding: 0 10px 10px 10px; /* Space inside border */
+}
+
+/* gallery modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9); /* Black background with opacity */
+    overflow: auto; /* Enable scroll if needed */
+}
+
+.modal-content {
+    display: block;
+    margin: auto;
+    max-width: 90vw; /* Maximum width 90% of viewport width */
+    max-height: 90vh; /* Maximum height 90% of viewport height */
+    width: auto;
+    height: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center the image */
+}
+
+.close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 /* gallery sort buttons */

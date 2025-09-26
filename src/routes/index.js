@@ -37,13 +37,13 @@ router.get('/pictures', async (req, res) => {
                         const exifData = await ExifReader.load(filePath);
                         // Check multiple EXIF and XMP/IPTC date fields
                         let exifDate = exifData.DateTimeOriginal?.value ||
-                                      exifData.DateTime?.value ||
-                                      exifData.CreateDate?.value ||
-                                      exifData.ModifyDate?.value ||
-                                      exifData['Date/Time Original']?.value ||
-                                      exifData['Date/Time Created']?.value ||
-                                      exifData.DateCreated?.value ||
-                                      exifData['xmp:DateCreated']?.value;
+                                        exifData.DateTime?.value ||
+                                        exifData.CreateDate?.value ||
+                                        exifData.ModifyDate?.value ||
+                                        exifData['Date/Time Original']?.value ||
+                                        exifData['Date/Time Created']?.value ||
+                                        exifData.DateCreated?.value ||
+                                        exifData['xmp:DateCreated']?.value;
 
                         // Handle array-wrapped strings (e.g., ["2019:07:31 23:18:03"])
                         if (Array.isArray(exifDate) && exifDate.length > 0 && typeof exifDate[0] === 'string') {
@@ -140,7 +140,13 @@ router.get('/pictures', async (req, res) => {
         }
 
         // Render the EJS template with the images and current sort
-        res.render('pictures', { images: sortedImages, sort });
+        res.render('pictures', {
+            images: sortedImages,
+            sort,
+            title: "LittleManHarley Gallery",
+            searchQuery: '' // Explicitly set to empty string for non-search context
+
+        });
     } catch (err) {
         console.error(err);
         res.status(500).send('Error loading images');
@@ -153,11 +159,115 @@ router.get('/best', async (req, res) => {
 });
 
 router.get('/search', async (req, res) => {
-    const query = req.query.q;
-    const galleries = await req.app.locals.prisma.photo.findMany({
-        where: { caption: { contains: query, mode: 'insensitive' } }
-    });
-    res.render('gallery', { title: `Search Results for "${query}"`, galleries });
+    try {
+        const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
+        if (!query) {
+            // If no query, redirect to /pictures or render with all images
+            return res.redirect('/pictures');
+        }
+
+        // Path to the images folder
+        const imagesDir = path.join(__dirname, '../../public/images');
+
+        // Read all files in the images directory
+        const files = await fs.readdir(imagesDir);
+
+        // Filter for common image file extensions
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const images = await Promise.all(
+            files
+                .filter(file => imageExtensions.includes(path.extname(file).toLowerCase()))
+                .map(async file => {
+                    const filePath = path.join(imagesDir, file);
+                    const stats = await fs.stat(filePath);
+                    let createdAt = stats.birthtime;
+
+                    // Try to get EXIF date (same logic as /pictures)
+                    try {
+                        const exifData = await ExifReader.load(filePath);
+                        let exifDate = exifData.DateTimeOriginal?.value ||
+                                        exifData.DateTime?.value ||
+                                        exifData.CreateDate?.value ||
+                                        exifData.ModifyDate?.value ||
+                                        exifData['Date/Time Original']?.value ||
+                                        exifData['Date/Time Created']?.value ||
+                                        exifData.DateCreated?.value ||
+                                        exifData['xmp:DateCreated']?.value;
+
+                        if (Array.isArray(exifDate) && exifDate.length > 0 && typeof exifDate[0] === 'string') {
+                            exifDate = exifDate[0];
+                        }
+
+                        if (!exifDate && (exifData['Date Created']?.value || exifData['xmp:DateCreated']?.value)) {
+                            let dateStr = exifData['Date Created']?.value || exifData['xmp:DateCreated']?.value;
+                            let timeStr = exifData['Time Created']?.value || '00:00:00';
+                            dateStr = Array.isArray(dateStr) ? String.fromCharCode(...dateStr) : dateStr;
+                            timeStr = Array.isArray(timeStr) ? String.fromCharCode(...timeStr) : timeStr;
+                            if (typeof dateStr === 'string') {
+                                timeStr = typeof timeStr === 'string' ? timeStr.split('-')[0].trim() : '00:00:00';
+                                exifDate = `${dateStr} ${timeStr}`;
+                            }
+                        }
+
+                        if (exifDate) {
+                            let dateStr = Array.isArray(exifDate) ? String.fromCharCode(...exifDate) : exifDate;
+                            if (typeof dateStr === 'string') {
+                                let parsedDate;
+                                if (dateStr.match(/^\d{4}[:-]\d{2}[:-]\d{2} \d{2}:\d{2}:\d{2}$/)) {
+                                    dateStr = dateStr.replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
+                                    parsedDate = new Date(dateStr.replace(' ', 'T'));
+                                } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/)) {
+                                    parsedDate = new Date(dateStr);
+                                } else if (dateStr.match(/^\d{4}[:-]\d{2}[:-]\d{2}$/)) {
+                                    dateStr = dateStr.replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
+                                    parsedDate = new Date(`${dateStr}T00:00:00`);
+                                }
+                                if (!isNaN(parsedDate)) {
+                                    createdAt = parsedDate;
+                                }
+                            }
+                        }
+                    } catch (exifError) {
+                        console.warn(`Failed to read EXIF data for ${file}: ${exifError.message}`);
+                    }
+
+                    return {
+                        src: `/images/${file}`,
+                        name: path.basename(file, path.extname(file)),
+                        createdAt
+                    };
+                })
+        );
+
+        // Filter images by search query
+        const filteredImages = images.filter(image =>
+            image.name.toLowerCase().includes(query)
+        );
+
+        // Get sort parameter (default: random)
+        const sort = req.query.sort || 'random';
+        let sortedImages = [...filteredImages];
+
+        // Sort images based on query parameter
+        if (sort === 'alpha') {
+            sortedImages.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sort === 'chrono') {
+            sortedImages.sort((a, b) => a.createdAt - b.createdAt);
+        } else {
+            sortedImages = shuffleArray(sortedImages);
+        }
+
+        // Render pictures.ejs with filtered images, sort, and search query
+        res.render('pictures', {
+            images: sortedImages,
+            sort,
+            searchQuery: query,
+            title: `Search Results for "${query}"`
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error processing search');
+    }
 });
 
 // Helper function to shuffle array (Fisher-Yates algorithm)
