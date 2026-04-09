@@ -1,0 +1,97 @@
+<!-- /src/views/admin/dashboard.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><%= title %></title>
+        <link rel="stylesheet" href="/css/style.css">
+        <style>
+            body {
+                font-family: 'Open Sans', Arial, sans-serif;
+                margin: 0;
+                padding: 40px;
+                background-color: #f9f9f9;
+            }
+            .admin-container {
+                max-width: 900px;
+                margin: 0 auto;
+                background: white;
+                padding: 40px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            }
+            h1 {
+                margin-top: 0;
+                color: #333;
+            }
+            label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 600;
+                color: #444;
+            }
+            input[type="text"], textarea {
+                width: 100%;
+                padding: 12px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 16px;
+                box-sizing: border-box;
+            }
+            textarea {
+                resize: vertical;
+                min-height: 280px;
+            }
+            button {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 14px 28px;
+                font-size: 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-top: 20px;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+            .back-link {
+                margin-top: 30px;
+                display: inline-block;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="admin-container">
+            <h1>Admin Dashboard</h1>
+
+            <form method="POST" action="/admin/update?secret=<%= adminSecret %>">
+                <input type="hidden" name="secret" value="<%= adminSecret %>">
+
+                <div style="margin-bottom: 25px;">
+                    <label>Site Identifier (slug):</label>
+                    <input type="text" name="siteSlug" value="<%= config.siteSlug %>" 
+                        style="width: 300px;" readonly>
+                    <small style="color: #666;">(used internally - change only if needed)</small>
+                </div>
+
+                <div style="margin-bottom: 25px;">
+                    <label>Site Title:</label>
+                    <input type="text" name="title" value="<%= config.title %>" required>
+                </div>
+
+                <div style="margin-bottom: 25px;">
+                    <label>Homepage Bio / Summary:</label>
+                    <textarea name="bio" rows="16" required><%= config.bio %></textarea>
+                </div>
+
+                <button type="submit">Save Changes</button>
+            </form>
+
+            <div class="back-link">
+                <a href="/">← Back to Homepage</a>
+            </div>
+        </div>
+    </body>
+</html>

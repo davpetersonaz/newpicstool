@@ -1,9 +1,7 @@
 //prisma/schema.prisma
-// Prisma schema docs: https://pris.ly/d/prisma-schema
 
 generator client {
     provider = "prisma-client-js"
-    output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -18,4 +16,12 @@ model Photo {
     caption   String?
     featured  Boolean @default(false)
     createdAt DateTime @default(now())
+}
+
+model SiteConfig {
+    id        Int      @id @default(autoincrement())
+    siteSlug  String   @unique   // e.g. "dino" or "harley"
+    title     String
+    bio       String
+    updatedAt DateTime @updatedAt
 }
