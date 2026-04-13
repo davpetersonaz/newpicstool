@@ -1,51 +1,86 @@
-/* public/css/style.css */
+/* ==================== BASE ==================== */
+* {
+    box-sizing: border-box;
+}
+
 body {
     background-color: #E1E3E1;
     color: #212529;
     font-family: 'Open Sans', Arial, sans-serif;
     font-size: 16px;
+    line-height: 1.6;
     margin: 0;
-    -webkit-font-smoothing: antialiased; /* Smooth fonts on WebKit browsers */
-    -moz-osx-font-smoothing: grayscale; /* Smooth fonts on Firefox */
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
 }
 
+/* ==================== TYPOGRAPHY ==================== */
+h1 { font-size: 2.5em; font-weight: 600; margin: 15px 0; }
+h2 { font-size: 1.8em; font-weight: 600; margin: 15px 0; }
+h3 { font-size: 1.5em; font-weight: 400; margin: 15px 0; }
+h4 { font-size: 1.2em; font-weight: 400; margin: 15px 0; }
+
+p {
+    color: #333;
+    font-size: 1.1em;
+    margin: 10px 0;
+}
+
+/* ==================== LAYOUT ==================== */
+.main-container {
+    padding: 20px 0 90px 0;
+    text-align: center;
+}
+
+.section {
+    margin: 0 auto;
+    max-width: 900px;
+    padding: 0 20px;
+}
+
+/* ==================== HEADER ==================== */
 .header {
     align-items: center;
     background-color: black;
     color: white;
     display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
     justify-content: space-between;
-    padding: 10px 20px;
+    padding: 12px 20px;
 }
 
-.header a {
+.link_area {
+    align-items: center;
+    display: flex;
+    gap: 20px;
+}
+
+.home_link {
     color: white;
-    margin: 0 10px;
+    font-size: 1.6em;
+    font-weight: 600;
     text-decoration: none;
 }
 
-.header a.home_link {
-    font-size: 1.5em;
+.nav_bar {
+    display: flex;
+    gap: 15px;
 }
 
-.header .nav_bar {
-    display: inline;
-    margin-left: 20px;
-}
-
-.header .nav_button {
+.nav_button {
+    border-radius: 4px;
     color: white;
-    margin: 0 10px;
+    padding: 6px 12px;
+    text-decoration: none;
+    transition: background-color 0.2s;
 }
 
-.header .search_input {
-    padding: 5px;
+.nav_button:hover {
+    background-color: rgba(255,255,255,0.1);
 }
 
-.header .search_button {
-    padding: 5px 10px;
-}
-
+/* ==================== FOOTER ==================== */
 .footer {
     align-items: center;
     background-color: black;
@@ -53,55 +88,111 @@ body {
     color: white;
     display: flex;
     justify-content: space-between;
-    padding: 10px 20px;
+    padding: 15px 20px;
     position: fixed;
+    width: 100%;
+    z-index: 100;
+}
+
+.copyright {
+    margin: 0;
+}
+
+.login_button {
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    color: white;
+    padding: 6px 14px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.login_button:hover {
+    background-color: white;
+    color: black;
+}
+
+/* ==================== BUTTONS ==================== */
+.btn {
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 10px 20px;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #45a049;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* ==================== FORMS ==================== */
+.form-input {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    padding: 12px;
     width: 100%;
 }
 
-.footer .login_button {
-    color: white;
-    text-decoration: none;
+/* ==================== ADMIN ==================== */
+.admin-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin: 40px auto;
+    max-width: 1300px;
+    padding: 35px;
 }
 
-main {
-    padding: 20px 0 80px 0; /* Space for fixed header/footer */
-    text-align: center;
+.admin-card {
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    padding: 25px;
 }
 
-main h1, main h3, main h4 {
-    margin: 15px 0; /* Space between headings */
-    line-height: 1.4; /* Open, readable line height */
+/* ==================== TABLE ==================== */
+.admin-table {
+    border-collapse: collapse;
+    width: 100%;
 }
 
-main h1 {
-    font-size: 2.5em; /* Large for prominence */
-    font-weight: 600; /* Medium weight for friendliness */
+.admin-table th,
+.admin-table td {
+    border-bottom: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
 }
 
-main h2 {
-    font-size: 1.8em;
-    margin: 15px 0;
-    font-weight: 600;
+.admin-table th {
+    background-color: #f4f4f4;
+    cursor: pointer;
 }
 
-main h3 {
-    font-size: 1.5em;
-    font-weight: 400; /* Lighter for softness */
+.admin-table th:hover {
+    background-color: #e0e0e0;
 }
 
-main h4 {
-    font-size: 1.2em;
-    font-weight: 400; /* Lighter for welcoming text */
-}
-
-main p {
-    font-size: 1.1em;
-    margin: 10px 0;
-    color: #333;
-}
-
+/* ==================== GALLERY & OTHER ==================== */
 .featured_image {
-    border: black 3px solid;
+    border: 3px solid black;
     border-radius: 10px;
     display: block;
     height: auto;
@@ -116,115 +207,100 @@ main p {
     padding: 0 20px;
 }
 
-/* gallery styles */
-.gallery {
+.success-msg {
+    background: #d4edda;
+    border-left: 5px solid #4CAF50;
+    border-radius: 6px;
+    color: #155724;
+    margin: 20px 0;
+    padding: 15px 18px;
+}
+
+.photo-thumb {
+    border-radius: 4px;
+    max-height: 80px;
+    max-width: 80px;
+}
+
+.truncated {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delete-btn {
+    background: #e74c3c;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    padding: 6px 12px;
+}
+
+.delete-btn:hover {
+    background: #c0392b;
+}
+
+/* ==================== Pagination ==================== */
+.pagination {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+.pagination button, .pagination span {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px 14px;
+}
+
+.pagination button.active {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+.pagination button:hover:not(.active) {
+    background: #f0f0f0;
+}
+
+/* ==================== ADMIN CONTROLS ==================== */
+.controls-bar {
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
-    justify-content: center;
-    padding: 20px 0; /* Match main padding */
+    justify-content: space-between;
+    margin-bottom: 20px;
 }
 
-.gallery-item {
+.controls-bar h2 {
+    font-size: 1.4em;
+    margin: 0;
+}
+
+.per-page-container label {
     align-items: center;
-    background-color: black; /* Black background for contrast */
-    border: 3px solid black; /* Black border around each image */
-    border-radius: 8px; /* Consistent with site’s rounded corners */
+    color: #555;
     display: flex;
-    flex-direction: column;
-    text-align: center; /* Center image and text */
+    font-size: 15px;
+    gap: 8px;
+    white-space: nowrap;
 }
 
-.gallery-item img {
-    border-radius: 4px; /* Slightly smaller radius for image */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    height: 250px; /* Fixed height for all images */
-    object-fit: contain; /* Ensure full image is visible */
-    width: auto; /* varying widths */
-}
-
-.gallery-image {
-    /* max-width: 100%; */
-    /* height: auto; */
-    cursor: pointer; /* Indicate the image is clickable */
-}
-
-.gallery-item .filename {
-    color: white; /* White text on black background */
-    margin-top: 8px;
-    padding: 0 10px 10px 10px; /* Space inside border */
-}
-
-/* gallery modal styles */
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9); /* Black background with opacity */
-    overflow: auto; /* Enable scroll if needed */
-}
-
-.modal-content {
-    display: block;
-    margin: auto;
-    max-width: 90vw; /* Maximum width 90% of viewport width */
-    max-height: 90vh; /* Maximum height 90% of viewport height */
-    width: auto;
-    height: auto;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Center the image */
-}
-
-.close {
-    position: absolute;
-    top: 15px;
-    right: 35px;
-    color: #fff;
-    font-size: 40px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close:hover,
-.close:focus {
-    color: #bbb;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-/* gallery sort buttons */
-.sort-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 15px 0; /* Space above and below buttons */
-}
-
-.sort-button {
-    background-color: black;
-    border: 2px solid black;
-    border-radius: 5px;
-    color: white;
-    font-family: 'Open Sans', Arial, sans-serif;
-    font-size: 14px;
-    padding: 8px 15px;
-    text-decoration: none;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-.sort-button:hover {
+.per-page-container select {
     background-color: white;
-    color: black;
-}
-
-.sort-button.active {
-    background-color: white;
-    color: black;
-    font-weight: 600;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    height: 34px;
+    line-height: 1;
+    margin: 0;
+    padding: 6px 10px;
+    vertical-align: middle;
 }

@@ -1,27 +1,46 @@
 {
-  "type": "module",
-  "name": "picstool",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@prisma/client": "^6.19.3",
-    "dotenv": "^17.4.1",
-    "ejs": "^5.0.1",
-    "exifreader": "^4.38.0",
-    "express": "^5.2.1",
-    "prisma": "^6.19.3"
-  },
-  "devDependencies": {
-    "eslint": "^9.33.0",
-    "nodemon": "^3.1.10"
-  }
+    "type": "module",
+    "name": "picstool",
+    "version": "1.0.0",
+    "description": "Memorial site builder for Dino, Harley, and future pets",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "dev": "nodemon src/index.js",
+        "prisma:generate": "prisma generate",
+        "prisma:push": "prisma db push",
+        "prisma:studio": "prisma studio",
+        "db:reset": "prisma db push --force-reset",
+        "clean:images": "rm -rf public/images/* && echo '✅ Images folder cleared'",
+        "clean": "npm run clean:images",
+        "lint": "eslint src/**/*.js",
+        "lint:fix": "eslint src/**/*.js --fix",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "memorial",
+        "photo-gallery",
+        "nodejs",
+        "prisma"
+    ],
+    "author": "Dave Peterson",
+    "license": "ISC",
+    "dependencies": {
+        "@prisma/client": "^6.19.3",
+        "dotenv": "^17.4.1",
+        "ejs": "^5.0.1",
+        "exifreader": "^4.38.0",
+        "express": "^5.2.1",
+        "multer": "^2.1.1",
+        "sharp": "^0.34.5"
+    },
+    "devDependencies": {
+        "eslint": "^9.33.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-prettier": "^5.5.5",
+        "nodemon": "^3.1.10",
+        "prettier": "^3.8.2",
+        "prisma": "^6.19.3"
+    }
 }

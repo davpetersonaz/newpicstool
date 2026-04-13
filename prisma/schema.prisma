@@ -9,19 +9,29 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Photo {
-    id        Int     @id @default(autoincrement())
-    title     String
-    image     String
-    caption   String?
-    featured  Boolean @default(false)
-    createdAt DateTime @default(now())
-}
-
 model SiteConfig {
     id        Int      @id @default(autoincrement())
     siteSlug  String   @unique   // e.g. "dino" or "harley"
     title     String
     bio       String
     updatedAt DateTime @updatedAt
+}
+
+model Photo {
+    id               Int      @id @default(autoincrement())
+    siteSlug         String   // ownership - links to SITE_SLUG
+    originalFilename String   // original name from user
+    image            String   // final stored filename in /public/images
+    hash             String   @unique   // SHA-256 hash to detect duplicates
+    featured         Boolean  @default(false)
+    bestMoment       Boolean  @default(false)   // for "Best Moments" gallery
+    width            Int?
+    height           Int?
+    caption          String?
+    takenAt          DateTime?
+    takenAtSource    String?   // ← New field: "exif" or "filename"
+    createdAt        DateTime @default(now())
+
+    @@index([siteSlug])
+    @@index([takenAt])
 }

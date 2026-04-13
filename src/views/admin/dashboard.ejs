@@ -6,92 +6,220 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><%= title %></title>
         <link rel="stylesheet" href="/css/style.css">
-        <style>
-            body {
-                font-family: 'Open Sans', Arial, sans-serif;
-                margin: 0;
-                padding: 40px;
-                background-color: #f9f9f9;
-            }
-            .admin-container {
-                max-width: 900px;
-                margin: 0 auto;
-                background: white;
-                padding: 40px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
-            h1 {
-                margin-top: 0;
-                color: #333;
-            }
-            label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: #444;
-            }
-            input[type="text"], textarea {
-                width: 100%;
-                padding: 12px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 16px;
-                box-sizing: border-box;
-            }
-            textarea {
-                resize: vertical;
-                min-height: 280px;
-            }
-            button {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 14px 28px;
-                font-size: 16px;
-                border-radius: 4px;
-                cursor: pointer;
-                margin-top: 20px;
-            }
-            button:hover {
-                background-color: #45a049;
-            }
-            .back-link {
-                margin-top: 30px;
-                display: inline-block;
-            }
-        </style>
     </head>
     <body>
         <div class="admin-container">
-            <h1>Admin Dashboard</h1>
+            <h1>Admin Dashboard — <%= siteSlug %></h1>
 
-            <form method="POST" action="/admin/update?secret=<%= adminSecret %>">
-                <input type="hidden" name="secret" value="<%= adminSecret %>">
+            <!-- Site Config -->
+            <div class="admin-card">
+                <h2>Site Settings</h2>
+                <form method="POST" action="/admin/update?secret=<%= adminSecret %>">
+                    <input type="hidden" name="secret" value="<%= adminSecret %>">
+                    
+                    <label class="form-label">Site Title</label>
+                    <input type="text" name="title" value="<%= config.title %>" class="form-input" required>
+                    
+                    <label class="form-label">Homepage Bio</label>
+                    <textarea name="bio" rows="6" class="form-input" required><%= config.bio %></textarea>
+                    
+                    <button type="submit" class="btn btn-primary">Save Site Settings</button>
+                </form>
+            </div>
 
-                <div style="margin-bottom: 25px;">
-                    <label>Site Identifier (slug):</label>
-                    <input type="text" name="siteSlug" value="<%= config.siteSlug %>" 
-                        style="width: 300px;" readonly>
-                    <small style="color: #666;">(used internally - change only if needed)</small>
+            <hr>
+
+            <!-- Bulk Upload -->
+            <div class="admin-card">
+                <h2>Bulk Photo Upload</h2>
+                <p class="mb-4">Select multiple photos at once (hold Ctrl/Cmd). Max 20 per upload.</p>
+                <form method="POST" action="/admin/upload?secret=<%= adminSecret %>" enctype="multipart/form-data">
+                    <input type="hidden" name="secret" value="<%= adminSecret %>">
+                <input type="file" name="photos" accept="image/*" multiple required class="form-input">
+                    <button type="submit" class="btn btn-primary">Upload Selected Photos</button>
+                </form>
+            </div>
+
+            <% if (typeof message !== 'undefined' && message) { %>
+                <div class="success-msg"><%= message %></div>
+            <% } %>
+
+            <hr>
+
+            <!-- Photos Controls -->
+            <div class="controls-bar">
+                <h2>Uploaded Photos (<%= photos.length %> total)</h2>
+                <div class="per-page-container">
+                    <label>
+                        Show
+                        <select id="itemsPerPage" onchange="changePageSize()" class="form-input">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        per page
+                    </label>
                 </div>
+            </div>
 
-                <div style="margin-bottom: 25px;">
-                    <label>Site Title:</label>
-                    <input type="text" name="title" value="<%= config.title %>" required>
-                </div>
+            <table id="photoTable" class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Thumbnail</th>
+                        <th onclick="sortTable(1)" class="sortable">Original Filename</th>
+                        <th onclick="sortTable(2)" class="sortable">Taken</th>
+                        <th onclick="sortTable(3)" class="sortable">Added</th>
+                        <th>Dimensions</th>
+                        <th class="truncated">Caption</th>
+                        <th onclick="sortTable(6)" class="sortable">Featured</th>
+                        <th onclick="sortTable(7)" class="sortable">Best</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <% photos.forEach(photo => { %>
+                        <tr>
+                            <td>
+                                <img src="/images/<%= photo.image %>" 
+                                    class="photo-thumb" 
+                                    alt="<%= photo.originalFilename ? photo.originalFilename.replace(/\.[^/.]+$/, '') : 'Photo' %>">
+                            </td>
+                            <td><%= photo.originalFilename %></td>
+                            <td><%= photo.takenAt ? photo.takenAt.toISOString().split('T')[0] : '—' %></td>
+                            <td><%= photo.createdAt.toISOString().split('T')[0] %></td>
+                            <td><%= photo.width %> × <%= photo.height %></td>
+                            <td class="truncated" title="<%= photo.caption || '' %>">
+                                <%= photo.caption ? photo.caption.substring(0, 30) + (photo.caption.length > 30 ? '...' : '') : '—' %>
+                            </td>
+                            <td><%= photo.featured ? 'Yes' : 'No' %></td>
+                            <td><%= photo.bestMoment ? 'Yes' : 'No' %></td>
+                            <td>
+                                <form method="POST" action="/admin/delete/<%= photo.id %>?secret=<%= adminSecret %>" 
+                                    style="margin:0;" 
+                                    onsubmit="return confirm('Delete this photo permanently?')"
+                                >
+                                    <input type="hidden" name="secret" value="<%= adminSecret %>">
+                                    <button type="submit" class="delete-btn">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
 
-                <div style="margin-bottom: 25px;">
-                    <label>Homepage Bio / Summary:</label>
-                    <textarea name="bio" rows="16" required><%= config.bio %></textarea>
-                </div>
-
-                <button type="submit">Save Changes</button>
-            </form>
+            <!-- Pagination -->
+            <div class="pagination" id="pagination"></div>
 
             <div class="back-link">
                 <a href="/">← Back to Homepage</a>
             </div>
         </div>
+
+        <script>
+            let currentPage = 1;
+            let itemsPerPage = 25;
+            let allRows = [];	// This must hold the FULL dataset at all times
+            let currentSortCol = null;
+            let currentSortDir = false; // false = ascending, true = descending
+
+            function renderPage() {
+                const tbody = document.getElementById("tableBody");
+                tbody.innerHTML = '';
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = Math.min(start + itemsPerPage, allRows.length);
+                for (let i = start; i < end; i++) {
+                    tbody.appendChild(allRows[i].cloneNode(true));   // clone to avoid moving DOM nodes
+                }
+                renderPagination();
+                scrollToTableTop();
+            }
+
+            function scrollToTableTop() {
+                document.getElementById("photoTable").scrollIntoView({ behavior: "smooth" });
+            }
+
+            function renderPagination() {
+                const totalPages = Math.ceil(allRows.length / itemsPerPage);
+                if (totalPages <= 1) {
+                    document.getElementById("pagination").innerHTML = '';
+                    return;
+                }
+                let html = `<button onclick="prevPage()" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === currentPage) {
+                        html += `<button class="active">${i}</button>`;
+                    } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+                        html += `<button onclick="goToPage(${i})">${i}</button>`;
+                    } else if (i === 5 || i === totalPages - 4) {
+                        html += `<span>...</span>`;
+                    }
+                }
+                html += `<button onclick="nextPage()" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+                document.getElementById("pagination").innerHTML = html;
+            }
+
+            function goToPage(page) {
+                currentPage = page;
+                renderPage();
+            }
+
+            function prevPage() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage();
+                }
+            }
+
+            function nextPage() {
+                const totalPages = Math.ceil(allRows.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage();
+                }
+            }
+
+            function changePageSize() {
+                itemsPerPage = parseInt(document.getElementById("itemsPerPage").value);
+                currentPage = 1;
+                renderPage();
+            }
+
+            function sortTable(colIndex) {
+                const tbody = document.getElementById("tableBody");
+                const rows = Array.from(tbody.rows);
+
+                // Toggle sort direction
+                if (currentSortCol === colIndex) {
+                    currentSortDir = !currentSortDir;
+                } else {
+                    currentSortDir = false; // start with ascending
+                }
+                currentSortCol = colIndex;
+
+                // Sort the full dataset
+                const sortedRows = [...allRows].sort((a, b) => {
+                    let valA = a.cells[colIndex].textContent.trim();
+                    let valB = b.cells[colIndex].textContent.trim();
+                    if (colIndex === 2 || colIndex === 3) { // Taken or Added columns
+                        valA = valA === '—' ? new Date(0) : new Date(valA);
+                        valB = valB === '—' ? new Date(0) : new Date(valB);
+                    }
+                    if (valA < valB) return currentSortDir ? 1 : -1;
+                    if (valA > valB) return currentSortDir ? -1 : 1;
+                    return 0;
+                });
+
+                allRows = sortedRows;
+                currentPage = 1;	// Always reset to page 1 after sorting
+                renderPage();
+            }
+
+            // Initialize — capture ALL rows once
+            window.onload = () => {
+                allRows = Array.from(document.getElementById("tableBody").rows);
+                renderPage();
+            };
+        </script>
     </body>
 </html>

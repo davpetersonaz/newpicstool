@@ -27,8 +27,8 @@ app.use(express.json());
 
 // Attach prisma to every request
 app.use((req, res, next) => {
-    req.prisma = prisma;
-    next();
+	req.prisma = prisma;
+	next();
 });
 
 // Routes
@@ -38,15 +38,15 @@ app.use('/admin', adminRoutes);
 
 // 404
 app.use((req, res) => {
-    res.status(404).render('404', { title: 'Page Not Found' });
+	res.status(404).render('404', { title: 'Page Not Found' });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something went wrong!');
+	console.error(err.stack);
+	res.status(500).send('Something went wrong!');
 });
 
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+	// console.log(`Server running on http://localhost:${port}`);
 });

@@ -1,10 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Prisma
+.prisma/
+generated/
+**/dev.db
+**/dev.db-journal
+
+# Build outputs
 build/
 dist/
-.env
-node_modules
-npm-debug.log
-package-lock.json
-prisma/*.db
-prisma/dev.db-journal
-/public/images
-/src/generated/prisma
+
+# Uploaded images (we don't want to commit user photos)
+public/images/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+Thumbs.db

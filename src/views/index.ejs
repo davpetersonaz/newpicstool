@@ -1,26 +1,28 @@
 <!-- src/views/index.ejs -->
 <!DOCTYPE html>
 <html>
-    <head>
-        <title><%= title %></title>
-        <link rel="stylesheet" href="/css/style.css">
-        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    </head>
-    <body>
-        <%- include('partials/header') %>
-        
-        <main>
-            <h4>Welcome to the website that celebrates the life and times of</h4>
-            <h1><%= title %></h1>
-            <h3>R.I.P.</h3>
-            
-            <img src="/images/feature.jpg" alt="Featured Photo" class="featured_image">
-            
-            <section class="bio">
-                <%= bio %>   <!-- This now comes from the database -->
-            </section>
-        </main>
+	<head>
+		<title><%= title %></title>
+		<link rel="stylesheet" href="/css/style.css">
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+	</head>
+	<body>
+		<%- include('partials/header') %>
+		
+		<main class="main-container">
+			<div class="section">
+				<h4>Welcome to the website that celebrates the life and times of</h4>
+				<h1><%= title %></h1>
+				<h3>R.I.P.</h3>
+				
+				<img src="/images/feature.jpg" alt="Featured Photo" class="featured_image">
+				
+				<section class="bio">
+					<%= bio %>
+				</section>
+			</div>
+		</main>
 
-        <%- include('partials/footer') %>
-    </body>
+		<%- include('partials/footer') %>
+	</body>
 </html>
