@@ -1,5 +1,12 @@
 <!-- /src/views/partials/footer.ejs -->
 <footer class="footer">
     <p class="copyright">&copy; <%= new Date().getFullYear() %> <%= title || 'Memorial Site' %></p>
-    <a href="/admin" class="login_button">Login</a>
+    <% if (isAdmin) { %>
+        <div class="admin-buttons">
+            <a href="/admin" class="login_button">Admin Dashboard</a>
+            <a href="/admin/logout" class="login_button">Logout</a>
+        </div>
+    <% } else { %>
+        <button onclick="showLoginModal()" class="login_button">Admin Login</button>
+    <% } %>
 </footer>

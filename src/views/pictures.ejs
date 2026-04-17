@@ -1,44 +1,241 @@
 <!-- /src/views/pictures.ejs -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title || 'LittleManHarley Pictures' %></title>
-    <link rel="stylesheet" href="/css/style.css"><!-- 'public' is served staticly in src/index.js -->
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-</head>
-<body>
-    <%- include('partials/header') %>
-    <main>
-        <% if (searchQuery) { %>
-            <h2><%= title %></h2>
-            <% if (images.length === 0) { %>
-                <p>No images found for "<%= searchQuery %>".</p>
-            <% } else { %>
-                <p>Found <%= images.length %> image<%= images.length !== 1 ? 's' : '' %>.</p>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title><%= title || 'Memorial Gallery' %></title>
+		<link rel="stylesheet" href="/css/style.css">
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <%- include('partials/header') %>
+        <main>
+            <% if (searchQuery) { %>
+                <h2><%= title %></h2>
+                <% if (images.length === 0) { %>
+                    <p>No images found for "<%= searchQuery %>".</p>
+                <% } else { %>
+                    <p>Found <%= images.length %> image<%= images.length !== 1 ? 's' : '' %>.</p>
+                <% } %>
             <% } %>
-        <% } %>
-        <div class="sort-buttons">
-            <a href="<%= searchQuery ? '/search?q=' + searchQuery + '&sort=chrono' : '/pictures?sort=chrono' %>" class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
-            <a href="<%= searchQuery ? '/search?q=' + searchQuery + '&sort=alpha' : '/pictures?sort=alpha' %>" class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
-            <a href="<%= searchQuery ? '/search?q=' + searchQuery + '&sort=random' : '/pictures?sort=random' %>" class="sort-button <%= sort === 'random' ? 'active' : '' %>">Shuffle the Order</a>
-        </div>
-        <div class="gallery">
-            <% images.forEach(image => { %>
-                <div class="gallery-item">
-                    <img src="<%= image.src %>" alt="<%= image.name %>" loading="lazy" class="gallery-image">
-                    <div class="filename"><%= image.name %></div>
-                </div>
-            <% }) %>
-        </div>
-        <!-- Full-screen modal -->
-        <div id="fullscreen-modal" class="modal">
-            <span id="close-modal" class="close">&times;</span>
-            <img id="fullscreen-image" class="modal-content" alt="Full-screen image">
-        </div>
-    </main>
-    <%- include('partials/footer') %>
-    <script src="/js/fullscreenPic.js"></script>
-</body>
+
+            <div class="sort-buttons">
+                <a href="#" onclick="sortGallery('chrono'); return false;" class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
+                <a href="#" onclick="sortGallery('alpha'); return false;" class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
+                <a href="#" onclick="sortGallery('random'); return false;" class="sort-button <%= sort === 'random' ? 'active' : '' %>">Shuffle the Order</a>
+            </div>
+
+            <div class="gallery" id="gallery-container">
+                <% images.forEach(image => { %>
+                <div class="gallery-item" data-id="<%= image.id || '' %>">
+		                <img src="<%= image.src %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
+		                <div class="caption" onclick="editCaption(this)" title="Click to edit">
+		                    <%= image.caption || 'No caption' %>
+                        </div>
+		                <% if (isAdmin) { %>
+                            <div class="admin-controls">
+                                <label class="feature-label">
+                                    <input type="checkbox" <%= image.featured ? 'checked' : '' %> 
+                                        onchange="toggleFeature(this, <%= image.id %>)">
+                                    Featured
+                                </label>
+                                <label class="feature-label">
+                                    <input type="checkbox" <%= image.bestMoment ? 'checked' : '' %> 
+                                        onchange="toggleBest(this, <%= image.id %>)">
+                                    Best
+                                </label>
+                                
+                                <button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">
+                                    🗑️
+                                </button>
+                            </div>
+		                <% } %>
+                    </div>
+                <% }) %>
+            </div>
+
+            <!-- Full-screen modal -->
+            <div id="fullscreen-modal" class="modal">
+                <span id="close-modal" class="close">&times;</span>
+                <img id="fullscreen-image" class="modal-content" alt="Full-screen image">
+            </div>
+        </main>
+
+        <script>
+	        // Client-side sorting (from previous version)
+            async function sortGallery(newSort) {
+		        const url = new URL(window.location);
+		        url.searchParams.set('sort', newSort);
+                try {
+                	const response = await fetch(url.toString());
+                    const data = await response.json();
+                    if (data.success) {
+                    	const gallery = document.getElementById('gallery-container');
+                        gallery.innerHTML = '';
+                        data.images.forEach(image => {
+                            const item = document.createElement('div');
+                            item.className = 'gallery-item';
+                            item.innerHTML = `
+                                <img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
+						        <div class="caption" onclick="editCaption(this)" title="Click to edit">
+						            ${image.caption || 'No caption'}
+						        </div>
+						    `;
+
+						    // Add admin controls if user is admin
+						    if (data.isAdmin) {
+						        item.innerHTML += `
+                                    <div class="admin-controls">
+                                        <label class="feature-label">
+                                            <input type="checkbox" onchange="toggleFeature(this, ${image.id})">
+                                            Featured
+                                        </label>
+                                        <label class="feature-label">
+                                            <input type="checkbox" onchange="toggleBest(this, ${image.id})">
+                                            Best
+                                        </label>
+                                        <button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">
+                                            🗑️
+                                        </button>
+			                        </div>
+                                `;
+			                }
+                            gallery.appendChild(item);
+                        });
+			            // Update active sort button
+				        document.querySelectorAll('.sort-button').forEach(btn => {
+				            btn.classList.toggle('active', btn.textContent.toLowerCase().includes(newSort));
+				        });
+                    }
+                } catch (err) {
+                    console.error('Sort failed:', err);
+			        window.location.href = url.toString(); // fallback to full reload
+                }
+            }
+
+		    // Admin functions
+		    async function editCaption(el) {
+		        const currentText = el.textContent.trim();
+		        const input = document.createElement('input');
+		        input.type = 'text';
+		        input.value = currentText;
+		        input.style.width = '100%';
+		        el.replaceWith(input);
+		        input.focus();
+		        input.select();
+
+		        const save = async () => {
+		            const newCaption = input.value.trim();
+		            const item = input.closest('.gallery-item');
+		            const photoId = item ? item.dataset.id : null;
+
+		            if (photoId && newCaption !== currentText) {
+		                try {
+		                    await fetch(`/api/photo/${photoId}/caption`, {
+		                        method: 'POST',
+		                        headers: { 'Content-Type': 'application/json' },
+		                        body: JSON.stringify({ caption: newCaption })
+		                    });
+		                } catch (e) {
+		                    console.error('Failed to save caption');
+		                }
+		            }
+
+		            const newCaptionDiv = document.createElement('div');
+		            newCaptionDiv.className = 'caption';
+		            newCaptionDiv.onclick = () => editCaption(newCaptionDiv);
+		            newCaptionDiv.title = "Click to edit";
+		            newCaptionDiv.textContent = newCaption || 'No caption';
+		            input.replaceWith(newCaptionDiv);
+		        };
+
+		        input.addEventListener('blur', save);
+		        input.addEventListener('keydown', e => {
+		            if (e.key === 'Enter'){ save(); }
+		            if (e.key === 'Escape'){ input.replaceWith(el); }
+		        });
+		    }
+
+		    async function toggleFeature(checkbox, photoId) {
+		        try {
+		            const res = await fetch(`/api/photo/${photoId}/toggle`, {
+		                method: 'POST',
+		                headers: { 'Content-Type': 'application/json' },
+		                body: JSON.stringify({ field: 'featured' })
+		            });
+		            const data = await res.json();
+		            if (!data.success){ checkbox.checked = !checkbox.checked; }
+		        } catch (e) {
+		            checkbox.checked = !checkbox.checked;
+		        }
+		    }
+
+		    async function toggleBest(checkbox, photoId) {
+		        try {
+		            const res = await fetch(`/api/photo/${photoId}/toggle`, {
+		                method: 'POST',
+		                headers: { 'Content-Type': 'application/json' },
+		                body: JSON.stringify({ field: 'bestMoment' })
+		            });
+		            const data = await res.json();
+		            if (!data.success){ checkbox.checked = !checkbox.checked; }
+		        } catch (e) {
+		            checkbox.checked = !checkbox.checked;
+		        }
+		    }
+
+            async function deletePhoto(btn) {
+                const photoId = btn.dataset.id;
+				if (!photoId) {
+					console.error('No photo ID found');
+					return;
+				}
+				if (!confirm('Delete this photo permanently?')){ return; }
+                try {
+                    const res = await fetch(`/api/photo/${photoId}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        const item = btn.closest('.gallery-item');
+                        if (item) {
+                            item.style.transition = 'opacity 0.3s ease';
+                            item.style.opacity = '0';
+						    setTimeout(() => { item.remove(); }, 300);
+                        }
+					} else {
+						alert('Failed to delete photo: ' + (data.message || 'Unknown error'));
+                    }
+                } catch (e) {
+					console.error('Delete request failed:', e);
+					alert('Failed to delete photo. Please try again.');
+                }
+            }
+
+        	// Lightbox	
+            document.addEventListener('DOMContentLoaded', () => {
+		        const modal = document.getElementById('fullscreen-modal');
+		        const modalImg = document.getElementById('fullscreen-image');
+		        const closeBtn = document.getElementById('close-modal');
+		        const galleryImages = document.querySelectorAll('.gallery-image');
+
+		        if (!modal || !modalImg || !closeBtn){ return; }
+		        galleryImages.forEach(image => {
+		            image.addEventListener('click', () => {
+		                modal.style.display = 'block';
+		                modalImg.src = image.src;
+		                modalImg.alt = image.alt || '';
+		            });
+		        });
+
+		        closeBtn.addEventListener('click', () => modal.style.display = 'none');
+		        modal.addEventListener('click', (e) => {
+		            if (e.target === modal){ modal.style.display = 'none'; }
+                });
+            });
+        </script>
+
+        <%- include('partials/footer') %>
+        <%- include('partials/login-modal') %>
+        <%- include('partials/login-modal-script') %>
+    </body>
 </html>

@@ -29,9 +29,17 @@ model Photo {
     height           Int?
     caption          String?
     takenAt          DateTime?
-    takenAtSource    String?   // ← New field: "exif" or "filename"
+    takenAtSource    String?   // "exif" or "filename" or "manual"
     createdAt        DateTime @default(now())
 
     @@index([siteSlug])
     @@index([takenAt])
+}
+
+model Admin {
+    id        Int      @id @default(autoincrement())
+    username  String   @unique
+    password  String   // hashed password
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }

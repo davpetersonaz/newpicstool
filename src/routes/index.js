@@ -1,19 +1,11 @@
 //src/routes/index.js
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-import ExifReader from 'exifreader';
 import express from 'express';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Home page
 router.get('/', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
-
 	const defaultConfig = {
 		title: 'Memorial Site',
 		bio: 'In loving memory'
@@ -21,30 +13,41 @@ router.get('/', async (req, res) => {
 
 	try {
 		let config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: siteSlug }
+			where: { siteSlug }
 		});
 
 		// Create default config if it doesn't exist yet
 		if (!config) {
 			config = await req.prisma.siteConfig.create({
 				data: {
-					siteSlug: siteSlug,
+					siteSlug,
 					title: defaultConfig.title,
 					bio: defaultConfig.bio
 				}
 			});
-			// console.log(`Created new config for site: ${siteSlug}`);
 		}
 
+		// Get all featured photos
 		const featuredPhotos = await req.prisma.photo.findMany({
-			where: { featured: true },
-			orderBy: { createdAt: 'desc' }
+			where: { featured: true, siteSlug }
 		});
+
+		// Randomly select one featured photo (if any)
+		let featuredImage = null;
+		if (featuredPhotos.length > 0) {
+			// Pick a random one
+			const randomIndex = Math.floor(Math.random() * featuredPhotos.length);
+			const selected = featuredPhotos[randomIndex];
+			featuredImage = {
+				src: `/images/${selected.image}`,
+				alt: selected.caption || config.title
+			};
+		}
 
 		res.render('index', {
 			title: config.title,
 			bio: config.bio,
-			featuredPhotos
+			featuredImage
 		});
 	} catch (error) {
 		console.error('Home route error:', error);
@@ -53,166 +56,157 @@ router.get('/', async (req, res) => {
 		res.render('index', {
 			title: defaultConfig.title,
 			bio: defaultConfig.bio,
-			featuredPhotos: []
+			featuredImage: null
 		});
 	}
 });
 
-// Pictures route - keeps all your EXIF + filesystem logic
+// Pictures route - Hybrid: EJS for initial load, JSON for sorting
 router.get('/pictures', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 	try {
-		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: siteSlug }
-		});
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const title = config ? config.title : 'Memorial Gallery';
-
-		// Read all files in the images directory
-		const imagesDir = path.join(__dirname, '../../public/images');
-		const files = await fs.readdir(imagesDir);
-
-		// Filter for common image file extensions
-		const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-		const images = await Promise.all(
-			files
-				.filter(file => imageExtensions.includes(path.extname(file).toLowerCase()))
-				.map(async file => {
-					const filePath = path.join(imagesDir, file);
-					const stats = await fs.stat(filePath);
-					let createdAt = stats.birthtime; // Default to file birthtime
-
-					// Try to get EXIF date
-					try {
-						const exifData = await ExifReader.load(filePath);
-						// Check multiple EXIF and XMP/IPTC date fields
-						let exifDate = exifData.DateTimeOriginal?.value ||
-                                       exifData.DateTime?.value ||
-                                       exifData.CreateDate?.value ||
-                                       exifData.ModifyDate?.value ||
-                                       exifData['Date/Time Original']?.value ||
-                                       exifData['Date/Time Created']?.value ||
-                                       exifData.DateCreated?.value ||
-                                       exifData['xmp:DateCreated']?.value;
-
-						// Handle array-wrapped strings (e.g., ["2019:07:31 23:18:03"])
-						if (Array.isArray(exifDate) && exifDate.length > 0 && typeof exifDate[0] === 'string') {
-							exifDate = exifDate[0];
-						}
-
-						if (exifDate) {
-							// Handle array or string
-							let dateStr = Array.isArray(exifDate) ? String.fromCharCode(...exifDate) : exifDate;
-							if (typeof dateStr === 'string') {
-								dateStr = dateStr.replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
-								const parsedDate = new Date(dateStr.replace(' ', 'T'));
-								if (!isNaN(parsedDate)) createdAt = parsedDate;
-							}
-						}
-					} catch (exifError) {
-						// Silently fail - use file birthtime
-						console.warn('exifError', exifError);
-					}
-
-					return {
-						src: `/images/${file}`,
-						name: path.basename(file, path.extname(file)),
-						createdAt
-					};
-				})
-		);
 
 		// Get sort parameter (default: random)
 		const sort = req.query.sort || 'random';
-		let sortedImages = [...images];
+		let dbPhotos;
 
-		// Sort images based on query parameter
-		if (sort === 'alpha') {
-			sortedImages.sort((a, b) => a.name.localeCompare(b.name));
-		} else if (sort === 'chrono') {
-			sortedImages.sort((a, b) => a.createdAt - b.createdAt);
-		} else {
-			// Default: random
-			sortedImages = shuffleArray(sortedImages);
+		if (sort === 'chrono') {
+			// Chronological sort: newest takenAt first, missing dates at the very end
+			dbPhotos = await req.prisma.photo.findMany({
+				where: { siteSlug },
+				orderBy: [
+					{ takenAt: { sort: 'desc', nulls: 'last' } },   // newest date first
+					{ createdAt: 'desc' }                           // tie-breaker / fallback
+				]
+			});
+		}
+		else if (sort === 'alpha') {
+			// Let Prisma handle alpha sort by caption
+			dbPhotos = await req.prisma.photo.findMany({
+				where: { siteSlug },
+				orderBy: [
+					{ caption: 'asc' },           // alphabetical by caption
+					{ createdAt: 'desc' }         // stable tie-breaker
+				]
+			});
+		} 
+		else {
+			// random or default - fetch newest first, then shuffle client-side
+			dbPhotos = await req.prisma.photo.findMany({
+				where: { siteSlug },
+				orderBy: { createdAt: 'desc' }
+			});
 		}
 
-		// Render the EJS template with the images and current sort
-		res.render('pictures', {
-			title: title,
-			images: sortedImages,
-			sort,
-			searchQuery: '' // Explicitly set to empty string for non-search context
+		// Map to the format your EJS template expects
+		const images = dbPhotos.map(photo => ({
+			id: photo.id,
+			src: `/images/${photo.image}`,
+			caption: photo.caption || ''
+		}));
 
+		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
+		if (req.query.sort) {
+			return res.json({
+				success: true,
+				sort: sort,
+				images: images,
+				title: title,
+				isAdmin: !!req.session?.isAdmin
+			});
+		}
+
+		// Initial page load - use EJS
+		res.render('pictures', {
+			title,
+			images,
+			sort,
+			searchQuery: '',
+			isAdmin: !!req.session?.isAdmin
 		});
 	} catch (err) {
-		console.error(err);
+		console.error('Pictures route error:', err);
 		res.status(500).send('Error loading images');
 	}
 });
 
-// Search route (kept mostly as-is, but cleaner)
+// Search route
 router.get('/search', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
-	if (!query) return res.redirect('/pictures');
+	if (!query){ return res.redirect('/pictures'); }
 
 	try {
-		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: siteSlug }
-		});
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const title = config ? config.title : 'Memorial Gallery';
-
-		const imagesDir = path.join(__dirname, '../../public/images');
-		const files = await fs.readdir(imagesDir);
-
-		const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-
-		const images = await Promise.all(
-			files
-				.filter(file => imageExtensions.includes(path.extname(file).toLowerCase()))
-				.map(async file => {
-					const filePath = path.join(imagesDir, file);
-					const stats = await fs.stat(filePath);
-					let createdAt = stats.birthtime;
-
-					try {
-						const exifData = await ExifReader.load(filePath);
-						let exifDate = exifData.DateTimeOriginal?.value || exifData.CreateDate?.value;
-						if (Array.isArray(exifDate) && exifDate.length > 0) exifDate = exifDate[0];
-
-						if (exifDate) {
-							let dateStr = Array.isArray(exifDate) ? String.fromCharCode(...exifDate) : exifDate;
-							dateStr = dateStr.replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
-							const parsedDate = new Date(dateStr.replace(' ', 'T'));
-							if (!isNaN(parsedDate)) createdAt = parsedDate;
-						}
-					} catch (e) {
-						console.warn('exifError:', e);
-					}
-
-					return {
-						src: `/images/${file}`,
-						name: path.basename(file, path.extname(file)),
-						createdAt
-					};
-				})
-		);
-
-		const filteredImages = images.filter(image => 
-			image.name.toLowerCase().includes(query)
-		);
-
 		const sort = req.query.sort || 'random';
-		let sortedImages = [...filteredImages];
+		let dbPhotos;
 
-		if (sort === 'alpha') sortedImages.sort((a, b) => a.name.localeCompare(b.name));
-		else if (sort === 'chrono') sortedImages.sort((a, b) => a.createdAt - b.createdAt);
-		else sortedImages = shuffleArray(sortedImages);
+		if (sort === 'chrono') {
+			// Chronological search: newest takenAt first
+			dbPhotos = await req.prisma.photo.findMany({
+				where: {
+					siteSlug,
+					caption: {
+						contains: query,
+						mode: 'insensitive'
+					}
+				},
+				orderBy: [
+					{ takenAt: { sort: 'desc', nulls: 'last' } },
+					{ createdAt: 'desc' }
+				]
+			});
+		} else if (sort === 'alpha') {
+			dbPhotos = await req.prisma.photo.findMany({
+				where: {
+					siteSlug,
+					caption: { contains: query, mode: 'insensitive' }
+				},
+				orderBy: [
+					{ caption: 'asc' },
+					{ createdAt: 'desc' }
+				]
+			});
+		} else {
+			// Alpha or random: fetch matching captions
+			dbPhotos = await req.prisma.photo.findMany({
+				where: {
+					siteSlug,
+					caption: {
+						contains: query,
+						mode: 'insensitive'
+					}
+				},
+				orderBy: { createdAt: 'desc' }
+			});
+		}
+
+		// Map to the format expected by your 'pictures' EJS template
+		const images = dbPhotos.map(photo => ({
+			id: photo.id,
+			src: `/images/${photo.image}`,
+			caption: photo.caption || ''
+		}));
+
+		if (req.query.sort) {
+			return res.json({
+				success: true,
+				sort: sort,
+				images: images,
+				title: title,
+				isAdmin: !!req.session?.isAdmin
+			});
+		} 
 
 		res.render('pictures', {
-			title: title,
-			images: sortedImages,
+			title,
+			images,
 			sort,
-			searchQuery: query
+			searchQuery: query,
+			isAdmin: !!req.session?.isAdmin
 		});
 
 	} catch (err) {
@@ -226,27 +220,33 @@ router.get('/best', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 	try {
 		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: siteSlug }
+			where: { siteSlug }
 		});
-
 		const siteTitle = config ? config.title : 'Memorial Site';
 
 		const featuredPhotos = await req.prisma.photo.findMany({
-			where: { featured: true },
-			orderBy: { createdAt: 'desc' }
+			where: { 
+				featured: true, 
+				siteSlug 
+			},
+			orderBy: [
+				{ takenAt: { sort: 'desc', nulls: 'last' } },   // primary sort: takenAt
+				{ createdAt: 'desc' }                           // fallback / tie-breaker
+			]
 		});
 
+		// Map to the format expected by your 'pictures' EJS template
 		const images = featuredPhotos.map(photo => ({
 			src: `/images/${photo.image}`,
-			name: photo.title || path.basename(photo.image || '', path.extname(photo.image || '')),
-			createdAt: photo.createdAt
+			caption: photo.caption || ''
 		}));
 
 		res.render('pictures', {
 			title: `${siteTitle} - Best Moments`,
-			images: images,
-			sort: 'chrono',
-			searchQuery: ''
+			images,
+			sort: 'chrono',      // tells the template which sort is active
+			searchQuery: '',
+			isAdmin: !!req.session?.isAdmin
 		});
 	} catch (error) {
 		console.error('Best moments error:', error);
@@ -254,13 +254,72 @@ router.get('/best', async (req, res) => {
 	}
 });
 
-// Helper function to shuffle array (Fisher-Yates algorithm)
-function shuffleArray(array) {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
+// Admin: Update caption (instant)
+router.post('/api/photo/:id/caption', async (req, res) => {
+	if (!req.session?.isAdmin) return res.status(401).json({ success: false });
+
+	const photoId = parseInt(req.params.id);
+	const { caption } = req.body;
+	try {
+		await req.prisma.photo.update({
+			where: { id: photoId },
+			data: { caption: caption || null }
+		});
+		res.json({ success: true });
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ success: false });
 	}
-	return array;
-}
+});
+
+// Admin: Toggle featured or bestMoment
+router.post('/api/photo/:id/toggle', async (req, res) => {
+	if (!req.session?.isAdmin) return res.status(401).json({ success: false });
+
+	const photoId = parseInt(req.params.id);
+	const { field } = req.body; // "featured" or "bestMoment"
+	try {
+		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
+		if (!photo) return res.status(404).json({ success: false });
+
+		const newValue = !photo[field];
+
+		await req.prisma.photo.update({
+			where: { id: photoId },
+			data: { [field]: newValue }
+		});
+
+		res.json({ success: true, newValue });
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ success: false });
+	}
+});
+
+// Admin: Delete photo
+router.delete('/api/photo/:id', async (req, res) => {
+	if (!req.session?.isAdmin){ return res.status(401).json({ success: false, message: 'Unauthorized' }); }
+
+	const photoId = parseInt(req.params.id);
+	try {
+		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
+		if (!photo){ return res.status(404).json({ success: false, message: 'Photo not found' }); }
+
+		// Delete file from disk
+		const fs = await import('fs/promises');
+		const pathModule = await import('path');
+		const filePath = pathModule.join('public', 'images', photo.image);
+		await fs.unlink(filePath).catch(err => {
+			console.warn('File delete warning:', err.message);
+		});
+
+		// Delete from database
+		await req.prisma.photo.delete({ where: { id: photoId } });
+		res.json({ success: true });
+	} catch (err) {
+		console.error('Delete error:', err);
+		res.status(500).json({ success: false, message: 'Failed to delete photo' });
+	}
+});
 
 export default router;

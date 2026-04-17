@@ -15,7 +15,11 @@
 				<h1><%= title %></h1>
 				<h3>R.I.P.</h3>
 				
-				<img src="/images/feature.jpg" alt="Featured Photo" class="featured_image">
+				<% if (featuredImage) { %>
+				    <img src="<%= featuredImage.src %>" 
+							alt="<%= featuredImage.alt %>" 
+							class="featured_image">
+		        <% } %>
 				
 				<section class="bio">
 					<%= bio %>
@@ -23,6 +27,8 @@
 			</div>
 		</main>
 
-		<%- include('partials/footer') %>
+        <%- include('partials/footer') %>
+        <%- include('partials/login-modal') %>
+        <%- include('partials/login-modal-script') %>
 	</body>
 </html>

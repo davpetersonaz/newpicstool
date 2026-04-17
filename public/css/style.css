@@ -1,3 +1,4 @@
+/* /public/css/styles.css */
 /* ==================== BASE ==================== */
 * {
     box-sizing: border-box;
@@ -15,10 +16,29 @@ body {
 }
 
 /* ==================== TYPOGRAPHY ==================== */
-h1 { font-size: 2.5em; font-weight: 600; margin: 15px 0; }
-h2 { font-size: 1.8em; font-weight: 600; margin: 15px 0; }
-h3 { font-size: 1.5em; font-weight: 400; margin: 15px 0; }
-h4 { font-size: 1.2em; font-weight: 400; margin: 15px 0; }
+h1 {
+    font-size: 2.5em;
+    font-weight: 600;
+    margin: 15px 0;
+}
+
+h2 {
+    font-size: 1.8em;
+    font-weight: 600;
+    margin: 15px 0;
+}
+
+h3 {
+    font-size: 1.5em;
+    font-weight: 400;
+    margin: 15px 0;
+}
+
+h4 {
+    font-size: 1.2em;
+    font-weight: 400;
+    margin: 15px 0;
+}
 
 p {
     color: #333;
@@ -95,20 +115,30 @@ p {
 }
 
 .copyright {
+    color: white;
     margin: 0;
 }
 
+.admin-buttons {
+    display: flex;
+    gap: 10px;
+}
+
 .login_button {
-    border: 1px solid rgba(255,255,255,0.3);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.6);
     border-radius: 4px;
     color: white;
-    padding: 6px 14px;
+    font-size: 15px;
+    padding: 8px 16px;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .login_button:hover {
     background-color: white;
+    border-color: white;
     color: black;
 }
 
@@ -122,6 +152,15 @@ p {
     transition: all 0.2s;
 }
 
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
 .btn-primary {
     background-color: #4CAF50;
     color: white;
@@ -131,13 +170,17 @@ p {
     background-color: #45a049;
 }
 
-.btn-danger {
-    background-color: #e74c3c;
+.delete-btn {
+    background: #e74c3c;
+    border: none;
+    border-radius: 4px;
     color: white;
+    cursor: pointer;
+    padding: 6px 12px;
 }
 
-.btn-danger:hover {
-    background-color: #c0392b;
+.delete-btn:hover {
+    background: #c0392b;
 }
 
 /* ==================== FORMS ==================== */
@@ -168,108 +211,6 @@ p {
     padding: 25px;
 }
 
-/* ==================== TABLE ==================== */
-.admin-table {
-    border-collapse: collapse;
-    width: 100%;
-}
-
-.admin-table th,
-.admin-table td {
-    border-bottom: 1px solid #ddd;
-    padding: 12px;
-    text-align: left;
-}
-
-.admin-table th {
-    background-color: #f4f4f4;
-    cursor: pointer;
-}
-
-.admin-table th:hover {
-    background-color: #e0e0e0;
-}
-
-/* ==================== GALLERY & OTHER ==================== */
-.featured_image {
-    border: 3px solid black;
-    border-radius: 10px;
-    display: block;
-    height: auto;
-    margin: 30px auto;
-    max-width: 80%;
-    padding: 2px;
-}
-
-.bio {
-    margin: 20px auto;
-    max-width: 80%;
-    padding: 0 20px;
-}
-
-.success-msg {
-    background: #d4edda;
-    border-left: 5px solid #4CAF50;
-    border-radius: 6px;
-    color: #155724;
-    margin: 20px 0;
-    padding: 15px 18px;
-}
-
-.photo-thumb {
-    border-radius: 4px;
-    max-height: 80px;
-    max-width: 80px;
-}
-
-.truncated {
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.delete-btn {
-    background: #e74c3c;
-    border: none;
-    border-radius: 4px;
-    color: white;
-    cursor: pointer;
-    padding: 6px 12px;
-}
-
-.delete-btn:hover {
-    background: #c0392b;
-}
-
-/* ==================== Pagination ==================== */
-.pagination {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin: 30px 0;
-}
-
-.pagination button, .pagination span {
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 8px 14px;
-}
-
-.pagination button.active {
-    background: #4CAF50;
-    border-color: #4CAF50;
-    color: white;
-}
-
-.pagination button:hover:not(.active) {
-    background: #f0f0f0;
-}
-
-/* ==================== ADMIN CONTROLS ==================== */
 .controls-bar {
     align-items: center;
     display: flex;
@@ -303,4 +244,408 @@ p {
     margin: 0;
     padding: 6px 10px;
     vertical-align: middle;
+}
+
+.taken-source {
+    color: #666;
+    font-size: 0.85em;
+    margin-left: 4px;
+}
+
+/* ==================== TABLE ==================== */
+.admin-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.admin-table th,
+.admin-table td {
+    border-bottom: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+.admin-table th {
+    background-color: #f4f4f4;
+    cursor: pointer;
+}
+
+.admin-table th:hover {
+    background-color: #e0e0e0;
+}
+
+/* ==================== GALLERY ==================== */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    padding: 20px 20px 40px;
+}
+
+.gallery-item {
+    align-items: center;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px);
+}
+
+.gallery-image {
+    display: block;
+    height: 280px;
+    max-width: 100%;
+    object-fit: contain;
+    width: auto;
+}
+
+.caption {
+    align-items: center;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    color: #444;
+    display: flex;
+    font-size: 14px;
+    justify-content: center;
+    line-height: 1.4;
+    min-height: 52px;
+    overflow: hidden;
+    padding: 10px 12px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
+/* Sort buttons */
+.sort-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 25px 0;
+}
+
+.sort-button {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    color: #333;
+    font-size: 15px;
+    padding: 10px 18px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.sort-button:hover {
+    background: #f0f0f0;
+}
+
+.sort-button.active {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+/* ==================== PAGINATION ==================== */
+.pagination {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+.pagination button,
+.pagination .ellipsis {
+    align-items: center;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    display: inline-flex;
+    font-size: 15px;
+    height: 38px;
+    justify-content: center;
+    line-height: 1;
+    min-width: 42px;
+    padding: 8px 12px;
+    vertical-align: middle;
+}
+
+.pagination button.active {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+.pagination button:hover:not(.active) {
+    background: #f0f0f0;
+}
+
+.pagination .ellipsis {
+    background: transparent;
+    border: none;
+    color: #666;
+    min-width: 42px;
+    padding: 8px 4px;
+}
+
+/* ==================== OTHER ==================== */
+.bio {
+    margin: 20px auto;
+    max-width: 80%;
+    padding: 0 20px;
+}
+
+.featured_image {
+    border: 3px solid black;
+    border-radius: 10px;
+    display: block;
+    height: auto;
+    margin: 30px auto;
+    max-width: 80%;
+    padding: 2px;
+}
+
+.success-msg {
+    background: #d4edda;
+    border-left: 5px solid #4CAF50;
+    border-radius: 6px;
+    color: #155724;
+    margin: 20px 0;
+    padding: 15px 18px;
+}
+
+.photo-thumb {
+    border-radius: 4px;
+    max-height: 80px;
+    max-width: 80px;
+}
+
+.truncated {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ==================== ADMIN LOGIN ==================== */
+body.admin-login {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-container {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-container h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333;
+}
+
+.login-container form {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-container input {
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.login-container button {
+    padding: 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.login-container button:hover {
+    background: #0056b3;
+}
+
+.login-container .error {
+    color: red;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.login-container .back-link {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* ==================== LOGIN MODAL ==================== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;                    /* starts hidden */
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px 40px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 420px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal .close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 32px;
+    cursor: pointer;
+    color: #666;
+}
+
+.modal .close:hover {
+    color: #000;
+}
+
+.modal input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.modal button {
+    width: 100%;
+    padding: 14px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.modal button:hover {
+    background: #0056b3;
+}
+
+/* ==================== ADMIN GALLERY CONTROLS ==================== */
+.gallery-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px);
+}
+
+.caption {
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    color: #444;
+    font-size: 14px;
+    min-height: 52px;
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.admin-controls {
+    align-items: center;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 10px 14px;
+    width: 100%;
+}
+
+.feature-label {
+    align-items: center;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 6px;
+    margin: 0;
+    padding: 4px 8px;
+    transition: background 0.2s;
+}
+
+.feature-label:hover {
+    background: #f0f0f0;
+}
+
+.feature-label input[type="checkbox"] {
+    accent-color: #4CAF50;
+    height: 18px;
+    width: 18px;
+}
+
+.delete-overlay {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.75);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    color: white;
+    cursor: pointer;
+    display: none;
+    font-size: 18px;
+    height: 36px;
+    justify-content: center;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 36px;
+    z-index: 20;
+}
+
+.gallery-item:hover .delete-overlay {
+    display: flex;
+}
+
+.delete-overlay:hover {
+    background: #e74c3c;
+    transform: scale(1.1);
 }

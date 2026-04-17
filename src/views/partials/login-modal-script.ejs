@@ -1,0 +1,30 @@
+<!-- /src/views/partials/login-modal-script.ejs -->
+<script>
+    function showLoginModal() {
+        document.getElementById('login-modal').style.display = 'flex';
+        // Focus username field
+        setTimeout(() => {
+            const usernameField = document.querySelector('#login-form input[name="username"]');
+            if (usernameField) usernameField.focus();
+        }, 100);
+    }
+
+    function hideLoginModal() {
+        document.getElementById('login-modal').style.display = 'none';
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('login-modal');
+        if (modal && e.target === modal) {
+            hideLoginModal();
+        }
+    });
+
+    // Close with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape") {
+            hideLoginModal();
+        }
+    });
+</script>

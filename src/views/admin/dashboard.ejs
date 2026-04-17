@@ -8,22 +8,63 @@
         <link rel="stylesheet" href="/css/style.css">
     </head>
     <body>
+        <%- include('../partials/header') %>
+
         <div class="admin-container">
             <h1>Admin Dashboard — <%= siteSlug %></h1>
 
             <!-- Site Config -->
             <div class="admin-card">
                 <h2>Site Settings</h2>
-                <form method="POST" action="/admin/update?secret=<%= adminSecret %>">
-                    <input type="hidden" name="secret" value="<%= adminSecret %>">
-                    
-                    <label class="form-label">Site Title</label>
-                    <input type="text" name="title" value="<%= config.title %>" class="form-input" required>
-                    
-                    <label class="form-label">Homepage Bio</label>
-                    <textarea name="bio" rows="6" class="form-input" required><%= config.bio %></textarea>
-                    
-                    <button type="submit" class="btn btn-primary">Save Site Settings</button>
+				<% if (isFirstSetup) { %>
+					<p style="color:#d9534f; font-weight:500;">
+						First time setup — please choose a unique Site Slug below.
+					</p>
+				<% } %>
+
+                <form method="POST" action="/admin/update">
+                    <!-- Site Slug -->
+					<div style="margin-bottom: 20px;">
+                        <label class="form-label">Site Slug 
+                            <span style="color:#d9534f;">(required, can only be set once)</span>
+                        </label>
+                        <% if (isFirstSetup) { %>
+                            <input type="text" 
+                                    name="siteSlug" 
+                                    value="<%= config.siteSlug %>" 
+                                    class="form-input" 
+                                    required 
+                                    placeholder="e.g. dino, harley, pedro">
+                        <% } else { %>
+                			<div class="form-input" style="background:#f8f8f8; color:#555; padding:12px; border-radius:6px;">
+                                <%= config.siteSlug %>
+                            </div>
+                			<input type="hidden" name="siteSlug" value="<%= config.siteSlug %>">
+                        <% } %>
+                    </div>
+
+                    <!-- Site Title -->
+			        <div style="margin-bottom: 20px;">
+                        <label class="form-label">Site Title</label>
+                        <input type="text" 
+                            name="title" 
+                            value="<%= config.title || '' %>" 
+                            class="form-input" 
+                            required>
+                    </div>
+                                
+                    <!-- Homepage Bio -->
+			        <div style="margin-bottom: 20px;">
+                        <label class="form-label">Homepage Bio / Summary</label>
+                        <textarea name="bio" 
+                                rows="8" 
+                                class="form-input" 
+                                required><%= config.bio || '' %></textarea>
+                    </div>
+                                
+			        <button type="submit" class="btn btn-primary">
+                        <%= isFirstSetup ? 'Create Site Configuration' : 'Save Changes' %>
+                    </button>
                 </form>
             </div>
 
@@ -32,10 +73,10 @@
             <!-- Bulk Upload -->
             <div class="admin-card">
                 <h2>Bulk Photo Upload</h2>
-                <p class="mb-4">Select multiple photos at once (hold Ctrl/Cmd). Max 20 per upload.</p>
-                <form method="POST" action="/admin/upload?secret=<%= adminSecret %>" enctype="multipart/form-data">
-                    <input type="hidden" name="secret" value="<%= adminSecret %>">
-                <input type="file" name="photos" accept="image/*" multiple required class="form-input">
+            	<p class="mb-4">Select multiple photos at once (hold Ctrl/Cmd). Max 30 per upload.</p>
+            
+            	<form method="POST" action="/admin/upload" enctype="multipart/form-data">
+                	<input type="file" name="photos" accept="image/*" multiple required class="form-input">
                     <button type="submit" class="btn btn-primary">Upload Selected Photos</button>
                 </form>
             </div>
@@ -47,7 +88,7 @@
             <hr>
 
             <!-- Photos Controls -->
-            <div class="controls-bar">
+            <div id="controlsBar" class="controls-bar">
                 <h2>Uploaded Photos (<%= photos.length %> total)</h2>
                 <div class="per-page-container">
                     <label>
@@ -63,6 +104,7 @@
                 </div>
             </div>
 
+	        <!-- Photos Table -->
             <table id="photoTable" class="admin-table">
                 <thead>
                     <tr>
@@ -71,7 +113,7 @@
                         <th onclick="sortTable(2)" class="sortable">Taken</th>
                         <th onclick="sortTable(3)" class="sortable">Added</th>
                         <th>Dimensions</th>
-                        <th class="truncated">Caption</th>
+                        <th onclick="sortTable(5)" class="sortable">Caption</th>
                         <th onclick="sortTable(6)" class="sortable">Featured</th>
                         <th onclick="sortTable(7)" class="sortable">Best</th>
                         <th>Actions</th>
@@ -86,20 +128,38 @@
                                     alt="<%= photo.originalFilename ? photo.originalFilename.replace(/\.[^/.]+$/, '') : 'Photo' %>">
                             </td>
                             <td><%= photo.originalFilename %></td>
-                            <td><%= photo.takenAt ? photo.takenAt.toISOString().split('T')[0] : '—' %></td>
+                            <td class="taken-cell" data-id="<%= photo.id %>">
+                                <% if (photo.takenAt) { %>
+                                    <span class="taken-date"><%= photo.takenAt.toISOString().split('T')[0] %></span>
+                                    <% if (photo.takenAtSource) { %>
+                                        <small class="taken-source">
+                                            (<%= 
+                                                photo.takenAtSource === 'exif' ? 'e' : 
+                                                photo.takenAtSource === 'filename' ? 'f' : 
+                                                photo.takenAtSource === 'manual' ? 'm' : 
+                                                photo.takenAtSource 
+                                            %>)
+                                        </small>
+                                    <% } %>
+                                <% } else { %>
+                                    <span class="taken-date">—</span>
+                                <% } %>
+                            </td>
                             <td><%= photo.createdAt.toISOString().split('T')[0] %></td>
                             <td><%= photo.width %> × <%= photo.height %></td>
-                            <td class="truncated" title="<%= photo.caption || '' %>">
+                            <td class="truncated" 
+                                title="<%= photo.caption || '' %>"
+                                data-full-caption="<%= photo.caption || '' %>"
+                            >
                                 <%= photo.caption ? photo.caption.substring(0, 30) + (photo.caption.length > 30 ? '...' : '') : '—' %>
                             </td>
                             <td><%= photo.featured ? 'Yes' : 'No' %></td>
                             <td><%= photo.bestMoment ? 'Yes' : 'No' %></td>
                             <td>
-                                <form method="POST" action="/admin/delete/<%= photo.id %>?secret=<%= adminSecret %>" 
+                                <form method="POST" action="/admin/delete/<%= photo.id %>" 
                                     style="margin:0;" 
-                                    onsubmit="return confirm('Delete this photo permanently?')"
+                                  	onsubmit="return confirm('Delete this photo permanently?')"
                                 >
-                                    <input type="hidden" name="secret" value="<%= adminSecret %>">
                                     <button type="submit" class="delete-btn">Delete</button>
                                 </form>
                             </td>
@@ -115,6 +175,8 @@
                 <a href="/">← Back to Homepage</a>
             </div>
         </div>
+
+        <%- include('../partials/footer') %>
 
         <script>
             let currentPage = 1;
@@ -136,7 +198,13 @@
             }
 
             function scrollToTableTop() {
-                document.getElementById("photoTable").scrollIntoView({ behavior: "smooth" });
+                const controls = document.getElementById("controlsBar");
+                if (controls) {
+                    controls.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"        // Scroll so the top of the element is at the top of the viewport
+                    });
+                }
             }
 
             function renderPagination() {
@@ -145,17 +213,43 @@
                     document.getElementById("pagination").innerHTML = '';
                     return;
                 }
+
                 let html = `<button onclick="prevPage()" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
-                for (let i = 1; i <= totalPages; i++) {
+
+                // Always show first page
+                html += currentPage === 1 
+                    ? `<button class="active">1</button>` 
+                    : `<button onclick="goToPage(1)">1</button>`;
+
+                // Left ellipsis
+                if (currentPage > 4) {
+                    html += `<span class="ellipsis">...</span>`;
+                }
+
+                // Pages around current page
+                const start = Math.max(2, currentPage - 2);
+                const end = Math.min(totalPages - 1, currentPage + 2);
+                for (let i = start; i <= end; i++) {
                     if (i === currentPage) {
                         html += `<button class="active">${i}</button>`;
-                    } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+                    } else {
                         html += `<button onclick="goToPage(${i})">${i}</button>`;
-                    } else if (i === 5 || i === totalPages - 4) {
-                        html += `<span>...</span>`;
                     }
                 }
+
+                // Right ellipsis
+                if (currentPage < totalPages - 3) {
+                    html += `<span class="ellipsis">...</span>`;
+                }
+
+                // Always show last page
+                if (totalPages > 1) {
+                    html += currentPage === totalPages 
+                        ? `<button class="active">${totalPages}</button>` 
+                        : `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+                }
                 html += `<button onclick="nextPage()" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+
                 document.getElementById("pagination").innerHTML = html;
             }
 
@@ -193,21 +287,37 @@
                 if (currentSortCol === colIndex) {
                     currentSortDir = !currentSortDir;
                 } else {
-                    currentSortDir = false; // start with ascending
+                    currentSortDir = false; // false = ascending, true = descending
                 }
                 currentSortCol = colIndex;
 
                 // Sort the full dataset
                 const sortedRows = [...allRows].sort((a, b) => {
-                    let valA = a.cells[colIndex].textContent.trim();
-                    let valB = b.cells[colIndex].textContent.trim();
-                    if (colIndex === 2 || colIndex === 3) { // Taken or Added columns
-                        valA = valA === '—' ? new Date(0) : new Date(valA);
-                        valB = valB === '—' ? new Date(0) : new Date(valB);
-                    }
-                    if (valA < valB) return currentSortDir ? 1 : -1;
-                    if (valA > valB) return currentSortDir ? -1 : 1;
-                    return 0;
+					let valA, valB;
+
+					// Special case for Caption column (col 5) - use full text from data attribute
+					if (colIndex === 5) {
+						valA = a.cells[colIndex].dataset.fullCaption || a.cells[colIndex].textContent.trim();
+						valB = b.cells[colIndex].dataset.fullCaption || b.cells[colIndex].textContent.trim();
+						valA = valA.toLowerCase();
+						valB = valB.toLowerCase();
+					} 
+					// Date columns: Taken (2) and Added (3)
+					else if (colIndex === 2 || colIndex === 3) {
+						valA = a.cells[colIndex].textContent.trim();
+						valB = b.cells[colIndex].textContent.trim();
+						if (valA === '—') valA = '0000-00-00';
+						if (valB === '—') valB = '0000-00-00';
+					} 
+					// Other text columns (Filename, etc.)
+					else {
+						valA = a.cells[colIndex].textContent.trim().toLowerCase();
+						valB = b.cells[colIndex].textContent.trim().toLowerCase();
+					}
+
+					if (valA < valB) return currentSortDir ? 1 : -1;
+					if (valA > valB) return currentSortDir ? -1 : 1;
+					return 0;
                 });
 
                 allRows = sortedRows;
@@ -220,6 +330,73 @@
                 allRows = Array.from(document.getElementById("tableBody").rows);
                 renderPage();
             };
+
+            // Inline text editing for Taken date
+            document.addEventListener('click', function(e) {
+                const cell = e.target.closest('.taken-cell');
+                if (!cell) return;
+
+                const dateSpan = cell.querySelector('.taken-date');
+                if (!dateSpan) return;
+
+                const photoId = cell.dataset.id;
+                const currentText = dateSpan.textContent === '—' ? '' : dateSpan.textContent;
+
+                // Create text input
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentText;
+                input.style.width = '110px';
+                input.style.fontSize = '14px';
+                input.placeholder = 'YYYY-MM-DD';
+
+                // Replace span with input
+                dateSpan.replaceWith(input);
+                input.focus();
+                input.select();
+
+                const saveDate = async () => {
+                    const newDateStr = input.value.trim();
+                    if (newDateStr === currentText) {
+                        input.replaceWith(dateSpan);
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/admin/update-taken/${photoId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ takenAt: newDateStr || null })
+                        });
+                        if (response.ok) {
+                            if (newDateStr) {
+                                dateSpan.textContent = newDateStr;
+                            } else {
+                                dateSpan.textContent = '—';
+                            }
+                            input.replaceWith(dateSpan);
+                        } else {
+                            alert('Failed to update date');
+                            input.replaceWith(dateSpan);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Error updating date');
+                        input.replaceWith(dateSpan);
+                    }
+                };
+
+                input.addEventListener('blur', saveDate);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveDate();
+                    }
+                    if (e.key === 'Escape') {
+                        input.replaceWith(dateSpan);
+                    }
+                });
+            });
         </script>
     </body>
 </html>
