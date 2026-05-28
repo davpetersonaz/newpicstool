@@ -11,18 +11,18 @@
 		
 		<main class="main-container">
 			<div class="section">
-				<h4>Welcome to the website that celebrates the life and times of</h4>
+				<h4><%= preTitle %></h4>
 				<h1><%= title %></h1>
-				<h3>R.I.P.</h3>
+				<h3><%= postTitle %></h3>
 				
 				<% if (featuredImage) { %>
-				    <img src="<%= featuredImage.src %>" 
-							alt="<%= featuredImage.alt %>" 
-							class="featured_image">
+					<div class="featured-image-container">
+						<img src="<%= featuredImage.src %>" alt="<%= featuredImage.alt %>" class="featured_image">
+					</div>
 		        <% } %>
 				
 				<section class="bio">
-					<%= bio %>
+					<%- bio %>
 				</section>
 			</div>
 		</main>

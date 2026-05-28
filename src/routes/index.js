@@ -3,11 +3,23 @@ import express from 'express';
 
 const router = express.Router();
 
+// Helper function to shuffle array (Fisher-Yates)
+function shuffleArray(array) {
+	const newArray = [...array]; // don't mutate original
+	for (let i = newArray.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+	}
+	return newArray;
+}
+
 // Home page
 router.get('/', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const defaultConfig = {
+		preTitle: 'Welcome to the website that celebrates the life and times of',
 		title: 'Memorial Site',
+		postTitle: 'R.I.P.',
 		bio: 'In loving memory'
 	};
 
@@ -21,7 +33,9 @@ router.get('/', async (req, res) => {
 			config = await req.prisma.siteConfig.create({
 				data: {
 					siteSlug,
+					preTitle: defaultConfig.preTitle,
 					title: defaultConfig.title,
+					postTitle: defaultConfig.postTitle,
 					bio: defaultConfig.bio
 				}
 			});
@@ -45,7 +59,9 @@ router.get('/', async (req, res) => {
 		}
 
 		res.render('index', {
+			preTitle: config.preTitle,
 			title: config.title,
+			postTitle: config.postTitle,
 			bio: config.bio,
 			featuredImage
 		});
@@ -54,7 +70,9 @@ router.get('/', async (req, res) => {
         
 		// Fallback using defaults
 		res.render('index', {
+			preTitle: defaultConfig.preTitle,
 			title: defaultConfig.title,
+			postTitle: defaultConfig.postTitle,
 			bio: defaultConfig.bio,
 			featuredImage: null
 		});
@@ -93,18 +111,21 @@ router.get('/pictures', async (req, res) => {
 			});
 		} 
 		else {
-			// random or default - fetch newest first, then shuffle client-side
+			// Random sort - ALWAYS fetch fresh and shuffle on the server
 			dbPhotos = await req.prisma.photo.findMany({
 				where: { siteSlug },
 				orderBy: { createdAt: 'desc' }
 			});
+			dbPhotos = shuffleArray(dbPhotos);
 		}
 
 		// Map to the format your EJS template expects
 		const images = dbPhotos.map(photo => ({
 			id: photo.id,
 			src: `/images/${photo.image}`,
-			caption: photo.caption || ''
+			caption: photo.caption || '',
+			featured: photo.featured,
+		    bestMoment: photo.bestMoment
 		}));
 
 		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
@@ -188,7 +209,9 @@ router.get('/search', async (req, res) => {
 		const images = dbPhotos.map(photo => ({
 			id: photo.id,
 			src: `/images/${photo.image}`,
-			caption: photo.caption || ''
+			caption: photo.caption || '',
+			featured: photo.featured,
+		    bestMoment: photo.bestMoment
 		}));
 
 		if (req.query.sort) {

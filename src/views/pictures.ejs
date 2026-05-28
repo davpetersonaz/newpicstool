@@ -73,45 +73,47 @@
                     if (data.success) {
                     	const gallery = document.getElementById('gallery-container');
                         gallery.innerHTML = '';
-                        data.images.forEach(image => {
-                            const item = document.createElement('div');
-                            item.className = 'gallery-item';
-                            item.innerHTML = `
-                                <img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
-						        <div class="caption" onclick="editCaption(this)" title="Click to edit">
-						            ${image.caption || 'No caption'}
-						        </div>
-						    `;
+						data.images.forEach(image => {
+							const item = document.createElement('div');
+							item.className = 'gallery-item';
+							item.innerHTML = `
+								<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
+								<div class="caption" onclick="editCaption(this)" title="Click to edit">
+									${image.caption || 'No caption'}
+								</div>
+							`;
+							if (data.isAdmin) {
+								item.innerHTML += `
+									<div class="admin-controls">
+										<label class="feature-label">
+											<input type="checkbox" onchange="toggleFeature(this, ${image.id})">
+											Featured
+										</label>
+										<label class="feature-label">
+											<input type="checkbox" onchange="toggleBest(this, ${image.id})">
+											Best
+										</label>
+										<button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">
+											🗑️
+										</button>
+									</div>
+								`;
+							}
 
-						    // Add admin controls if user is admin
-						    if (data.isAdmin) {
-						        item.innerHTML += `
-                                    <div class="admin-controls">
-                                        <label class="feature-label">
-                                            <input type="checkbox" onchange="toggleFeature(this, ${image.id})">
-                                            Featured
-                                        </label>
-                                        <label class="feature-label">
-                                            <input type="checkbox" onchange="toggleBest(this, ${image.id})">
-                                            Best
-                                        </label>
-                                        <button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">
-                                            🗑️
-                                        </button>
-			                        </div>
-                                `;
-			                }
-                            gallery.appendChild(item);
-                        });
+							gallery.appendChild(item);
+						});
 			            // Update active sort button
 				        document.querySelectorAll('.sort-button').forEach(btn => {
-				            btn.classList.toggle('active', btn.textContent.toLowerCase().includes(newSort));
-				        });
-                    }
-                } catch (err) {
-                    console.error('Sort failed:', err);
-			        window.location.href = url.toString(); // fallback to full reload
-                }
+						    const isRandom = newSort === 'random';
+						    btn.classList.toggle('active', isRandom ? 
+						        btn.textContent.toLowerCase().includes('shuffle') || btn.textContent.toLowerCase().includes('random') 
+						        : btn.textContent.toLowerCase().includes(newSort));
+							});
+				        }
+				    } catch (err) {
+				        console.error('Sort failed:', err);
+						window.location.href = url.toString(); // fallback to full reload
+				    }
             }
 
 		    // Admin functions

@@ -19,43 +19,31 @@ body {
 h1 {
     font-size: 2.5em;
     font-weight: 600;
-    margin: 15px 0;
+    margin: 10px 0;
 }
 
 h2 {
     font-size: 1.8em;
     font-weight: 600;
-    margin: 15px 0;
+    margin: 10px 0;
 }
 
 h3 {
     font-size: 1.5em;
     font-weight: 400;
-    margin: 15px 0;
+    margin: 10px 0;
 }
 
 h4 {
     font-size: 1.2em;
     font-weight: 400;
-    margin: 15px 0;
+    margin: 10px 0;
 }
 
 p {
     color: #333;
     font-size: 1.1em;
-    margin: 10px 0;
-}
-
-/* ==================== LAYOUT ==================== */
-.main-container {
-    padding: 20px 0 90px 0;
-    text-align: center;
-}
-
-.section {
-    margin: 0 auto;
-    max-width: 900px;
-    padding: 0 20px;
+    margin: 8px 0;
 }
 
 /* ==================== HEADER ==================== */
@@ -193,6 +181,45 @@ p {
     width: 100%;
 }
 
+/* ==================== HOME ==================== */
+.main-container {
+    padding: 20px 0 90px 0;
+    text-align: center;
+}
+
+.section {
+    margin: 0 auto;
+    max-width: 1100px;
+    padding: 0 20px;
+}
+
+.bio {
+    font-size: 1.08em;
+    line-height: 1.75;
+    margin: 40px auto;
+    max-width: 1100px;
+    padding: 0 20px;
+    text-align: justify;
+}
+
+.bio p {
+    margin-bottom: 1.4em;
+}
+
+.featured-image-container {
+    margin: 30px auto;
+    max-width: 800px;
+}
+
+.featured_image {
+    border: 3px solid black;
+    border-radius: 10px;
+    display: block;
+    height: auto;
+    padding: 2px;
+    width: 100%;
+}
+
 /* ==================== ADMIN ==================== */
 .admin-container {
     background: white;
@@ -272,6 +299,41 @@ p {
 
 .admin-table th:hover {
     background-color: #e0e0e0;
+}
+
+/* ============= ADMIN UPLOAD DROP ZONE ============ */
+.drop-zone {
+    background: #fafafa;
+    border: 3px dashed #ccc;
+    border-radius: 12px;
+    cursor: pointer;
+    margin: 15px 0;
+    padding: 50px 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.drop-zone.dragover {
+    background: #f0fff0;
+    border-color: #4CAF50;
+    transform: scale(1.02);
+}
+
+.drop-zone p {
+    color: #666;
+    font-size: 16px;
+    margin: 8px 0;
+}
+
+.upload-label {
+    cursor: pointer;
+}
+
+.upload-status {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 15px;
+    text-align: center;
 }
 
 /* ==================== GALLERY ==================== */
@@ -399,23 +461,92 @@ p {
     padding: 8px 4px;
 }
 
+/* ==================== ADMIN GALLERY CONTROLS ==================== */
+.gallery-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px);
+}
+
+.caption {
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    color: #444;
+    font-size: 14px;
+    min-height: 52px;
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.admin-controls {
+    align-items: center;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 10px 14px;
+    width: 100%;
+}
+
+.feature-label {
+    align-items: center;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    font-size: 14px;
+    gap: 6px;
+    margin: 0;
+    padding: 4px 8px;
+    transition: background 0.2s;
+}
+
+.feature-label:hover {
+    background: #f0f0f0;
+}
+
+.feature-label input[type="checkbox"] {
+    accent-color: #4CAF50;
+    height: 18px;
+    width: 18px;
+}
+
+.delete-overlay {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.75);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    color: white;
+    cursor: pointer;
+    display: none;
+    font-size: 18px;
+    height: 36px;
+    justify-content: center;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 36px;
+    z-index: 20;
+}
+
+.gallery-item:hover .delete-overlay {
+    display: flex;
+}
+
+.delete-overlay:hover {
+    background: #e74c3c;
+    transform: scale(1.1);
+}
+
 /* ==================== OTHER ==================== */
-.bio {
-    margin: 20px auto;
-    max-width: 80%;
-    padding: 0 20px;
-}
-
-.featured_image {
-    border: 3px solid black;
-    border-radius: 10px;
-    display: block;
-    height: auto;
-    margin: 30px auto;
-    max-width: 80%;
-    padding: 2px;
-}
-
 .success-msg {
     background: #d4edda;
     border-left: 5px solid #4CAF50;
@@ -563,89 +694,4 @@ body.admin-login {
 
 .modal button:hover {
     background: #0056b3;
-}
-
-/* ==================== ADMIN GALLERY CONTROLS ==================== */
-.gallery-item {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.2s ease;
-}
-
-.gallery-item:hover {
-    transform: translateY(-4px);
-}
-
-.caption {
-    background: #f9f9f9;
-    border-top: 1px solid #eee;
-    color: #444;
-    font-size: 14px;
-    min-height: 52px;
-    padding: 10px 12px;
-    text-align: center;
-}
-
-.admin-controls {
-    align-items: center;
-    background: #f9f9f9;
-    border-top: 1px solid #eee;
-    display: flex;
-    gap: 16px;
-    justify-content: space-between;
-    padding: 10px 14px;
-    width: 100%;
-}
-
-.feature-label {
-    align-items: center;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    font-size: 14px;
-    gap: 6px;
-    margin: 0;
-    padding: 4px 8px;
-    transition: background 0.2s;
-}
-
-.feature-label:hover {
-    background: #f0f0f0;
-}
-
-.feature-label input[type="checkbox"] {
-    accent-color: #4CAF50;
-    height: 18px;
-    width: 18px;
-}
-
-.delete-overlay {
-    align-items: center;
-    background: rgba(0, 0, 0, 0.75);
-    border: none;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    color: white;
-    cursor: pointer;
-    display: none;
-    font-size: 18px;
-    height: 36px;
-    justify-content: center;
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    width: 36px;
-    z-index: 20;
-}
-
-.gallery-item:hover .delete-overlay {
-    display: flex;
-}
-
-.delete-overlay:hover {
-    background: #e74c3c;
-    transform: scale(1.1);
 }

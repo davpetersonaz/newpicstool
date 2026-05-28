@@ -78,7 +78,7 @@ router.get('/', async (req, res) => {
 
 // POST /admin/update - site settings
 router.post('/update', async (req, res) => {
-	const { title, bio, siteSlug: submittedSlug } = req.body;
+	const { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
 	if (!title || !bio) {
 		return res.status(400).send('Title and bio are required');
 	}
@@ -86,8 +86,19 @@ router.post('/update', async (req, res) => {
 	try {
 		await req.prisma.siteConfig.upsert({
 			where: { siteSlug: finalSlug },
-			update: { title, bio },
-			create: { siteSlug: finalSlug, title, bio }
+			update: { 
+				preTitle: (preTitle || '').trim(),
+				title, 
+				postTitle: (postTitle || '').trim(),
+				bio 
+			},
+			create: { 
+				siteSlug: finalSlug, 
+				preTitle: (preTitle || '').trim(),
+				title, 
+				postTitle: (postTitle || '').trim(),
+				bio 
+			}
 		});
 
 		// If this was first setup, update .env file
