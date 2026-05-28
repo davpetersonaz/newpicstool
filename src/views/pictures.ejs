@@ -29,7 +29,7 @@
             <div class="gallery" id="gallery-container">
                 <% images.forEach(image => { %>
                 <div class="gallery-item" data-id="<%= image.id || '' %>">
-		                <img src="<%= image.src %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
+		                <img src="<%= image.src || image.image %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
 		                <div class="caption" onclick="editCaption(this)" title="Click to edit">
 		                    <%= image.caption || 'No caption' %>
                         </div>
@@ -77,7 +77,7 @@
 							const item = document.createElement('div');
 							item.className = 'gallery-item';
 							item.innerHTML = `
-								<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
+								<img src="${image.src || image.image}" alt="${image.caption}" loading="lazy" class="gallery-image">
 								<div class="caption" onclick="editCaption(this)" title="Click to edit">
 									${image.caption || 'No caption'}
 								</div>

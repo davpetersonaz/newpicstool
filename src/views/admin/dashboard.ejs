@@ -145,8 +145,9 @@
                     <% photos.forEach(photo => { %>
                         <tr>
                             <td>
-                                <img src="/images/<%= photo.image %>" 
+                                <img src="<%= photo.image %>" 
                                     class="photo-thumb" 
+									loading="lazy"
                                     alt="<%= photo.originalFilename ? photo.originalFilename.replace(/\.[^/.]+$/, '') : 'Photo' %>">
                             </td>
                             <td><%= photo.originalFilename %></td>
