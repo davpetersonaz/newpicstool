@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
 			const randomIndex = Math.floor(Math.random() * featuredPhotos.length);
 			const selected = featuredPhotos[randomIndex];
 			featuredImage = {
-				src: `/images/${selected.image}`,
+				src: selected.image,
 				alt: selected.caption || config.title
 			};
 		}
@@ -122,7 +122,7 @@ router.get('/pictures', async (req, res) => {
 		// Map to the format your EJS template expects
 		const images = dbPhotos.map(photo => ({
 			id: photo.id,
-			src: `/images/${photo.image}`,
+			src: photo.image,
 			caption: photo.caption || '',
 			featured: photo.featured,
 		    bestMoment: photo.bestMoment
@@ -208,7 +208,7 @@ router.get('/search', async (req, res) => {
 		// Map to the format expected by your 'pictures' EJS template
 		const images = dbPhotos.map(photo => ({
 			id: photo.id,
-			src: `/images/${photo.image}`,
+			src: photo.image,
 			caption: photo.caption || '',
 			featured: photo.featured,
 		    bestMoment: photo.bestMoment
@@ -260,7 +260,7 @@ router.get('/best', async (req, res) => {
 
 		// Map to the format expected by your 'pictures' EJS template
 		const images = featuredPhotos.map(photo => ({
-			src: `/images/${photo.image}`,
+			src: photo.image,
 			caption: photo.caption || ''
 		}));
 
