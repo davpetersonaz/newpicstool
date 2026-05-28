@@ -7,6 +7,8 @@
     "scripts": {
         "start": "node src/index.js",
         "dev": "nodemon src/index.js",
+		"build": "prisma generate",
+		"postinstall": "prisma generate",
         "prisma:generate": "prisma generate",
         "prisma:push": "prisma db push",
         "prisma:studio": "prisma studio",
@@ -14,8 +16,7 @@
         "clean:images": "rm -rf public/images/* && echo '✅ Images folder cleared'",
         "clean": "npm run clean:images",
         "lint": "eslint src/**/*.js",
-        "lint:fix": "eslint src/**/*.js --fix",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "lint:fix": "eslint src/**/*.js --fix"
     },
     "keywords": [
         "memorial",
