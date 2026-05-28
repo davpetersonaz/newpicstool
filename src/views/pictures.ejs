@@ -28,7 +28,7 @@
 
             <div class="gallery" id="gallery-container">
                 <% images.forEach(image => { %>
-                <div class="gallery-item" data-id="<%= image.id || '' %>">
+                	<div class="gallery-item" data-id="<%= image.id || '' %>">
 		                <img src="<%= image.src || image.image %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
 		                <div class="caption" onclick="editCaption(this)" title="Click to edit">
 		                    <%= image.caption || 'No caption' %>
@@ -45,7 +45,6 @@
                                         onchange="toggleBest(this, <%= image.id %>)">
                                     Best
                                 </label>
-                                
                                 <button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">
                                     🗑️
                                 </button>

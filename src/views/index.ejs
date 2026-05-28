@@ -17,7 +17,9 @@
 				
 				<% if (featuredImage) { %>
 					<div class="featured-image-container">
-						<="<%= featuredImage.src %>" alt="<%= featuredImage.alt %>" class="featured_image">
+						<img src="<%= featuredImage.src || featuredImage.image %>" 
+							alt="<%= featuredImage.alt || 'Featured Photo' %>" 
+							class="featured_image" loading="lazy">
 					</div>
 		        <% } %>
 				
