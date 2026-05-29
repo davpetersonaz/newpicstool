@@ -70,19 +70,19 @@
         </main>
 
 		<script id="gallery-data" type="application/json">
-			<%= JSON.stringify({
-				allPhotos: allImages || images,
-				initialCount: images.length,
-				pageSize: pageSize || 24,
-				isAdmin: !!isAdmin
-			}) %>
+<%= JSON.stringify({
+	allPhotos: allImages || images,
+	initialCount: images.length,
+	pageSize: pageSize || 30,
+	isAdmin: !!isAdmin
+}, null, 0) %>
 		</script>
 
 		<script>
             // Parse data safely
             let allPhotos = [];
             let displayedCount = 0;
-            let pageSize = 24;
+            let pageSize = 30;
             let isAdminUser = false;
 
             try {
@@ -91,7 +91,7 @@
 
                 allPhotos = parsed.allPhotos || [];
                 displayedCount = parsed.initialCount || 0;
-                pageSize = parsed.pageSize || 24;
+                pageSize = parsed.pageSize || 30;
                 isAdminUser = !!parsed.isAdmin;
             } catch (e) {
                 console.error("Failed to parse gallery data:", e);
