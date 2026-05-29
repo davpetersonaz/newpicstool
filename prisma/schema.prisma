@@ -25,8 +25,9 @@ model Photo {
     originalFilename String   // original name from user
     image            String   // final stored filename in /public/images
     hash             String   @unique   // SHA-256 hash to detect duplicates
-    featured         Boolean  @default(false)
+    featured         Boolean  @default(false)	// featured images on Best Moments gallery
     bestMoment       Boolean  @default(false)   // for "Best Moments" gallery
+	home             Boolean  @default(false)	// featured on Home page
     width            Int?
     height           Int?
     caption          String?

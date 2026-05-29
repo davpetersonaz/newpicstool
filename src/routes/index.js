@@ -3,6 +3,10 @@ import express from 'express';
 
 const router = express.Router();
 
+// Global constants
+const SITE_SLUG = process.env.SITE_SLUG || 'slug';
+const PAGE_SIZE = 32;   // Adjust as needed
+
 // Helper function to shuffle array (Fisher-Yates)
 function shuffleArray(array) {
 	const newArray = [...array]; // don't mutate original
@@ -13,11 +17,10 @@ function shuffleArray(array) {
 	return newArray;
 }
 
-// Home page
+// ====================== HOME ======================
 router.get('/', async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const defaultConfig = {
-		preTitle: 'Welcome to the website that celebrates the life and times of',
+		preTitle: 'Welcome to a celebration of the life and times of',
 		title: 'Memorial Site',
 		postTitle: 'R.I.P.',
 		bio: 'In loving memory'
@@ -25,25 +28,22 @@ router.get('/', async (req, res) => {
 
 	try {
 		let config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug }
+			where: { siteSlug: SITE_SLUG }
 		});
 
 		// Create default config if it doesn't exist yet
 		if (!config) {
 			config = await req.prisma.siteConfig.create({
 				data: {
-					siteSlug,
-					preTitle: defaultConfig.preTitle,
-					title: defaultConfig.title,
-					postTitle: defaultConfig.postTitle,
-					bio: defaultConfig.bio
+					siteSlug: SITE_SLUG,
+					...defaultConfig
 				}
 			});
 		}
 
 		// Get all featured photos
 		const featuredPhotos = await req.prisma.photo.findMany({
-			where: { featured: true, siteSlug }
+			where: { featured: true, siteSlug: SITE_SLUG }
 		});
 
 		// Randomly select one featured photo (if any)
@@ -60,6 +60,7 @@ router.get('/', async (req, res) => {
 
 		res.render('index', {
 			preTitle: config.preTitle,
+			headerTitle: config?.title || 'Memorial Site',
 			title: config.title,
 			postTitle: config.postTitle,
 			bio: config.bio,
@@ -68,31 +69,22 @@ router.get('/', async (req, res) => {
 	} catch (error) {
 		console.error('Home route error:', error);
         
-		// Fallback using defaults
-		res.render('index', {
-			preTitle: defaultConfig.preTitle,
-			title: defaultConfig.title,
-			postTitle: defaultConfig.postTitle,
-			bio: defaultConfig.bio,
-			featuredImage: null
-		});
+		res.render('index', { ...defaultConfig, featuredImage: null });
 	}
 });
 
-// Pictures route - Hybrid: EJS for initial load, JSON for sorting, with Load More
+// ====================== PICTURES ======================
 router.get('/pictures', async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
-	const PAGE_SIZE = 32;   // ← Adjust as needed
 	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
-		const title = config ? config.title : 'Memorial Gallery';
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
+		const title = config?.title || 'Memorial Gallery';
 		const sort = req.query.sort || 'random';
-		let dbPhotos;
+		let dbPhotos = [];
 
 		if (sort === 'chrono') {
 			// Chronological sort: newest takenAt first, missing dates at the very end
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug },
+				where: { siteSlug: SITE_SLUG },
 				orderBy: [
 					{ takenAt: { sort: 'desc', nulls: 'last' } },   // newest date first
 					{ createdAt: 'desc' }                           // tie-breaker / fallback
@@ -101,7 +93,7 @@ router.get('/pictures', async (req, res) => {
 		} else if (sort === 'alpha') {
 			// Let Prisma handle alpha sort by caption
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug },
+				where: { siteSlug: SITE_SLUG },
 				orderBy: [
 					{ caption: 'asc' },           // alphabetical by caption
 					{ createdAt: 'desc' }         // stable tie-breaker
@@ -110,7 +102,7 @@ router.get('/pictures', async (req, res) => {
 		} else {
 			// Random sort - ALWAYS fetch fresh and shuffle on the server
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug },
+				where: { siteSlug: SITE_SLUG },
 				orderBy: { createdAt: 'desc' }
 			});
 			dbPhotos = shuffleArray(dbPhotos);
@@ -121,18 +113,19 @@ router.get('/pictures', async (req, res) => {
 			id: photo.id,
 			src: photo.image,
 			caption: photo.caption || '',
-			featured: photo.featured,
-		    bestMoment: photo.bestMoment
+			home: photo.home || false,
+		    bestMoment: photo.bestMoment,
+			featured: photo.featured
 		}));
 		const initialImages = allImages.slice(0, PAGE_SIZE);
 
 		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
-		if (req.query.sort || req.query.loadMore) {
+		if (req.query.sort) {
 			return res.json({
 				success: true,
 				sort,
 				images: initialImages,     // first page only
-				allImages: allImages,      // full list for load more
+				allImages: allImages || [],      // full list for load more
 				title,
 				isAdmin: !!req.session?.isAdmin,
 				pageSize: PAGE_SIZE
@@ -141,9 +134,10 @@ router.get('/pictures', async (req, res) => {
 
 		// Initial page load - use EJS
 		res.render('pictures', {
+			headerTitle: config?.title || 'Memorial Site',
 			title,
-			images: initialImages,
 			allImages,
+			images: initialImages,
 			sort,
 			searchQuery: '',
 			isAdmin: !!req.session?.isAdmin,
@@ -155,27 +149,23 @@ router.get('/pictures', async (req, res) => {
 	}
 });
 
-// Search route
+// ====================== SEARCH ======================
 router.get('/search', async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
 	if (!query){ return res.redirect('/pictures'); }
 
 	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
-		const title = config ? config.title : 'Memorial Gallery';
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
+		const baseTitle = config?.title || 'Memorial Gallery';
 		const sort = req.query.sort || 'random';
-		let dbPhotos;
+		let dbPhotos = [];
 
 		if (sort === 'chrono') {
 			// Chronological search: newest takenAt first
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug,
-					caption: {
-						contains: query,
-						mode: 'insensitive'
-					}
+					siteSlug: SITE_SLUG,
+					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: [
 					{ takenAt: { sort: 'desc', nulls: 'last' } },
@@ -185,7 +175,7 @@ router.get('/search', async (req, res) => {
 		} else if (sort === 'alpha') {
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug,
+					siteSlug: SITE_SLUG,
 					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: [
@@ -197,41 +187,47 @@ router.get('/search', async (req, res) => {
 			// Alpha or random: fetch matching captions
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug,
-					caption: {
-						contains: query,
-						mode: 'insensitive'
-					}
+					siteSlug: SITE_SLUG,
+					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: { createdAt: 'desc' }
 			});
 		}
 
 		// Map to the format expected by your 'pictures' EJS template
-		const images = dbPhotos.map(photo => ({
+		const allImages = dbPhotos.map(photo => ({
 			id: photo.id,
 			src: photo.image,
 			caption: photo.caption || '',
-			featured: photo.featured,
-		    bestMoment: photo.bestMoment
+			home: photo.home || false,
+		    bestMoment: photo.bestMoment,
+			featured: photo.featured
 		}));
+		const initialImages = allImages.slice(0, PAGE_SIZE);
 
+		// JSON response for sorting
 		if (req.query.sort) {
 			return res.json({
 				success: true,
-				sort: sort,
-				images: images,
-				title: title,
-				isAdmin: !!req.session?.isAdmin
+				sort,
+				images: initialImages,
+				allImages,
+				title: `${baseTitle} — Search: "${query}"`,
+				isAdmin: !!req.session?.isAdmin,
+				pageSize: PAGE_SIZE
 			});
 		} 
 
+		// Initial page render
 		res.render('pictures', {
-			title,
-			images,
+			headerTitle: baseTitle,
+			title: `${baseTitle} — Search: "${query}"`,
+			allImages,
+			images: initialImages,
 			sort,
 			searchQuery: query,
-			isAdmin: !!req.session?.isAdmin
+			isAdmin: !!req.session?.isAdmin,
+			pageSize: PAGE_SIZE
 		});
 
 	} catch (err) {
@@ -242,17 +238,16 @@ router.get('/search', async (req, res) => {
 
 // Best moments route
 router.get('/best', async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
 	try {
 		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug }
+			where: { siteSlug: SITE_SLUG }
 		});
 		const siteTitle = config ? config.title : 'Memorial Site';
 
 		const featuredPhotos = await req.prisma.photo.findMany({
 			where: { 
 				featured: true, 
-				siteSlug 
+				siteSlug: SITE_SLUG 
 			},
 			orderBy: [
 				{ takenAt: { sort: 'desc', nulls: 'last' } },   // primary sort: takenAt
@@ -267,6 +262,7 @@ router.get('/best', async (req, res) => {
 		}));
 
 		res.render('pictures', {
+			headerTitle: config?.title || 'Memorial Site',
 			title: `${siteTitle} - Best Moments`,
 			images,
 			sort: 'chrono',      // tells the template which sort is active
@@ -302,7 +298,7 @@ router.post('/api/photo/:id/toggle', async (req, res) => {
 	if (!req.session?.isAdmin) return res.status(401).json({ success: false });
 
 	const photoId = parseInt(req.params.id);
-	const { field } = req.body; // "featured" or "bestMoment"
+	const { field } = req.body; // "featured", "bestMoment", or "home"
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo) return res.status(404).json({ success: false });

@@ -1,0 +1,70 @@
+<!-- /src/views/partials/admin-scripts.ejs -->
+<script>
+	async function toggleHome(checkbox, photoId) {
+		try {
+			const res = await fetch(`/api/photo/${photoId}/toggle`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ field: 'home' })
+			});
+			const data = await res.json();
+			if (!data.success) checkbox.checked = !checkbox.checked;
+		} catch (e) {
+			checkbox.checked = !checkbox.checked;
+		}
+	}
+
+	async function toggleBest(checkbox, photoId) {
+		try {
+			const res = await fetch(`/api/photo/${photoId}/toggle`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ field: 'bestMoment' })
+			});
+			const data = await res.json();
+			if (!data.success){ checkbox.checked = !checkbox.checked; }
+		} catch (e) {
+			checkbox.checked = !checkbox.checked;
+		}
+	}
+
+	async function toggleFeature(checkbox, photoId) {
+		try {
+			const res = await fetch(`/api/photo/${photoId}/toggle`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ field: 'featured' })
+			});
+			const data = await res.json();
+			if (!data.success){ checkbox.checked = !checkbox.checked; }
+		} catch (e) {
+			checkbox.checked = !checkbox.checked;
+		}
+	}
+
+	async function deletePhoto(btn) {
+		const photoId = btn.dataset.id;
+		if (!photoId) {
+			console.error('No photo ID found');
+			return;
+		}
+		if (!confirm('Delete this photo permanently?')){ return; }
+		try {
+			const res = await fetch(`/api/photo/${photoId}`, { method: 'DELETE' });
+			const data = await res.json();
+			if (data.success) {
+				const item = btn.closest('.gallery-item') || btn.closest('tr');
+				if (item) {
+					item.style.transition = 'opacity 0.3s ease';
+					item.style.opacity = '0';
+					setTimeout(() => item.remove(), 300);
+				}
+			} else {
+				alert('Failed to delete photo: ' + (data.message || 'Unknown error'));
+			}
+		} catch (e) {
+			console.error('Delete request failed:', e);
+			alert('Failed to delete photo. Please try again.');
+		}
+	}
+</script>

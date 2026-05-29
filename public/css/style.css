@@ -275,8 +275,14 @@ p {
 
 .taken-source {
     color: #666;
+	cursor: help;
     font-size: 0.85em;
     margin-left: 4px;
+}
+
+.taken-source:hover {
+    color: #333;
+    text-decoration: underline;
 }
 
 /* ==================== TABLE ==================== */
@@ -337,6 +343,19 @@ p {
 }
 
 /* ==================== GALLERY ==================== */
+main h2 {
+    color: #212529;
+    margin: 30px 0 15px 0;
+    text-align: center;
+}
+
+/* Optional: Make the "Found X images" paragraph also centered */
+main p {
+    color: #555;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
 .gallery {
     display: flex;
     flex-wrap: wrap;
@@ -463,38 +482,38 @@ p {
 
 /* ==================== FULLSCREEN IMAGE LIGHTBOX ==================== */
 #fullscreen-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    align-items: center;
     background-color: rgba(0, 0, 0, 0.98);
     display: none;
-    align-items: center;
+    height: 100%;
     justify-content: center;
-    z-index: 10000;
+    left: 0;
     overflow: auto;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 10000;
 }
 
 #fullscreen-image {
-    max-width: 96%;
-    max-height: 96vh;
     border-radius: 10px;
     box-shadow: 0 0 50px rgba(0,0,0,0.9);
+    max-height: 96vh;
+    max-width: 96%;
     object-fit: contain;
 }
 
 #close-modal {
-    position: absolute;
-    top: 20px;
-    right: 30px;
     color: #fff;
+    cursor: pointer;
     font-size: 50px;
     font-weight: bold;
-    cursor: pointer;
-    z-index: 10001;
+    position: absolute;
+    right: 30px;
     text-shadow: 0 2px 15px rgba(0,0,0,0.9);
+    top: 20px;
     user-select: none;
+    z-index: 10001;
 }
 
 #close-modal:hover {
@@ -612,28 +631,28 @@ p {
 
 /* ==================== ADMIN LOGIN ==================== */
 body.admin-login {
-    font-family: Arial, sans-serif;
+    align-items: center;
     background: #f4f4f4;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    font-family: Arial, sans-serif;
     height: 100vh;
+    justify-content: center;
     margin: 0;
 }
 
 .login-container {
     background: white;
-    padding: 40px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    width: 100%;
     max-width: 400px;
+    padding: 40px;
+    width: 100%;
 }
 
 .login-container h1 {
-    text-align: center;
-    margin-bottom: 30px;
     color: #333;
+    margin-bottom: 30px;
+    text-align: center;
 }
 
 .login-container form {
@@ -642,22 +661,22 @@ body.admin-login {
 }
 
 .login-container input {
-    padding: 12px;
-    margin: 10px 0;
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 16px;
+    margin: 10px 0;
+    padding: 12px;
 }
 
 .login-container button {
-    padding: 12px;
     background: #007bff;
-    color: white;
     border: none;
     border-radius: 5px;
-    font-size: 16px;
+    color: white;
     cursor: pointer;
+    font-size: 16px;
     margin-top: 10px;
+    padding: 12px;
 }
 
 .login-container button:hover {
@@ -666,46 +685,46 @@ body.admin-login {
 
 .login-container .error {
     color: red;
-    text-align: center;
     margin: 10px 0;
+    text-align: center;
 }
 
 .login-container .back-link {
-    text-align: center;
     margin-top: 20px;
+    text-align: center;
 }
 
 /* ==================== LOGIN MODAL ==================== */
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    align-items: center;
     background: rgba(0, 0, 0, 0.75);
     display: none;                    /* starts hidden */
-    align-items: center;
+    height: 100%;
     justify-content: center;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
     z-index: 2000;
 }
 
 .modal-content {
     background: white;
-    padding: 30px 40px;
     border-radius: 10px;
-    width: 90%;
-    max-width: 420px;
-    position: relative;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    max-width: 420px;
+    padding: 30px 40px;
+    position: relative;
+    width: 90%;
 }
 
 .modal .close {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    font-size: 32px;
-    cursor: pointer;
     color: #666;
+    cursor: pointer;
+    font-size: 32px;
+    position: absolute;
+    right: 20px;
+    top: 15px;
 }
 
 .modal .close:hover {
@@ -713,24 +732,24 @@ body.admin-login {
 }
 
 .modal input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 16px;
+    margin: 10px 0;
+    padding: 12px;
+    width: 100%;
 }
 
 .modal button {
-    width: 100%;
-    padding: 14px;
     background: #007bff;
-    color: white;
     border: none;
     border-radius: 6px;
-    font-size: 16px;
+    color: white;
     cursor: pointer;
+    font-size: 16px;
     margin-top: 10px;
+    padding: 14px;
+    width: 100%;
 }
 
 .modal button:hover {

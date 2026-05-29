@@ -132,12 +132,17 @@
                     <tr>
                         <th>Thumbnail</th>
                         <th onclick="sortTable(1)" class="sortable">Original Filename</th>
-                        <th onclick="sortTable(2)" class="sortable">Taken</th>
+                        <th onclick="sortTable(2)" class="sortable" 
+							title="Date the photo was taken&#10;&#10;(e) = from EXIF data&#10;(f) = derived from filename&#10;(m) = manually entered"
+						>
+							Taken
+						</th>
                         <th onclick="sortTable(3)" class="sortable">Added</th>
                         <th>Dimensions</th>
                         <th onclick="sortTable(5)" class="sortable">Caption</th>
-                        <th onclick="sortTable(6)" class="sortable">Featured</th>
+						<th onclick="sortTable(6)" class="sortable">Home</th>
                         <th onclick="sortTable(7)" class="sortable">Best</th>
+                        <th onclick="sortTable(8)" class="sortable">Feature</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -155,14 +160,21 @@
                                 <% if (photo.takenAt) { %>
                                     <span class="taken-date"><%= photo.takenAt.toISOString().split('T')[0] %></span>
                                     <% if (photo.takenAtSource) { %>
-                                        <small class="taken-source">
-                                            (<%= 
-                                                photo.takenAtSource === 'exif' ? 'e' : 
-                                                photo.takenAtSource === 'filename' ? 'f' : 
-                                                photo.takenAtSource === 'manual' ? 'm' : 
-                                                photo.takenAtSource 
-                                            %>)
-                                        </small>
+										<small class="taken-source" 
+											title="<%= 
+												photo.takenAtSource === 'exif' ? 'Extracted from photo EXIF metadata' : 
+												photo.takenAtSource === 'filename' ? 'Derived from the original filename' : 
+												photo.takenAtSource === 'manual' ? 'Manually entered by admin' : 
+												'Date source unknown' 
+											%>"
+										>
+											(<%= 
+												photo.takenAtSource === 'exif' ? 'e' : 
+												photo.takenAtSource === 'filename' ? 'f' : 
+												photo.takenAtSource === 'manual' ? 'm' : 
+												photo.takenAtSource 
+											%>)
+										</small>
                                     <% } %>
                                 <% } else { %>
                                     <span class="taken-date">—</span>
@@ -176,8 +188,18 @@
                             >
                                 <%= photo.caption ? photo.caption.substring(0, 30) + (photo.caption.length > 30 ? '...' : '') : '—' %>
                             </td>
-                            <td><%= photo.featured ? 'Yes' : 'No' %></td>
-                            <td><%= photo.bestMoment ? 'Yes' : 'No' %></td>
+                            <td>
+								<input type="checkbox" <%= photo.home ? 'checked' : '' %> 
+									onchange="toggleHome(this, <%= photo.id %>)">
+							</td>
+							<td>
+								<input type="checkbox" <%= photo.bestMoment ? 'checked' : '' %> 
+									onchange="toggleBest(this, <%= photo.id %>)">
+							</td>
+							<td>
+								<input type="checkbox" <%= photo.featured ? 'checked' : '' %> 
+									onchange="toggleFeature(this, <%= photo.id %>)">
+							</td>
                             <td>
                                 <form method="POST" action="/admin/delete/<%= photo.id %>" 
                                     style="margin:0;" 
@@ -199,6 +221,7 @@
             </div>
         </div>
 
+		<%- include('../partials/admin-scripts') %>
         <%- include('../partials/footer') %>
 
         <script>
@@ -318,8 +341,15 @@
                 const sortedRows = [...allRows].sort((a, b) => {
 					let valA, valB;
 
+					// Checkbox columns (Featured, Best, Home)
+					if (colIndex === 6 || colIndex === 7 || colIndex === 8) {
+						const checkboxA = a.cells[colIndex].querySelector('input[type="checkbox"]');
+						const checkboxB = b.cells[colIndex].querySelector('input[type="checkbox"]');
+						valA = checkboxA ? checkboxA.checked : false;
+						valB = checkboxB ? checkboxB.checked : false;
+					} 
 					// Special case for Caption column (col 5) - use full text from data attribute
-					if (colIndex === 5) {
+					else if (colIndex === 5) {
 						valA = a.cells[colIndex].dataset.fullCaption || a.cells[colIndex].textContent.trim();
 						valB = b.cells[colIndex].dataset.fullCaption || b.cells[colIndex].textContent.trim();
 						valA = valA.toLowerCase();
