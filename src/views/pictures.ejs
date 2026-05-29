@@ -70,12 +70,12 @@
         </main>
 
 		<script id="gallery-data" type="application/json">
-<%= JSON.stringify({
-	allPhotos: allImages || images,
-	initialCount: images.length,
-	pageSize: pageSize || 30,
-	isAdmin: !!isAdmin
-}, null, 0) %>
+<%- JSON.stringify({
+    allPhotos: allImages || images,
+    initialCount: images.length,
+    pageSize: pageSize || 30,
+    isAdmin: !!isAdmin
+}) %>
 		</script>
 
 		<script>
@@ -87,14 +87,17 @@
 
             try {
                 const rawData = document.getElementById('gallery-data').textContent.trim();
+				console.warn('Raw JSON length:', rawData.length); // debug
                 const parsed = JSON.parse(rawData);
 
                 allPhotos = parsed.allPhotos || [];
                 displayedCount = parsed.initialCount || 0;
                 pageSize = parsed.pageSize || 30;
                 isAdminUser = !!parsed.isAdmin;
+				console.warn('Gallery data loaded:', allPhotos.length, 'photos');
             } catch (e) {
                 console.error("Failed to parse gallery data:", e);
+				console.log("Raw data preview:", document.getElementById('gallery-data').textContent.substring(0, 300));
             }
 
 		    // ==================== LOAD MORE ====================
