@@ -79,14 +79,13 @@ router.get('/', async (req, res) => {
 	}
 });
 
-// Pictures route - Hybrid: EJS for initial load, JSON for sorting
+// Pictures route - Hybrid: EJS for initial load, JSON for sorting, with Load More
 router.get('/pictures', async (req, res) => {
 	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const PAGE_SIZE = 32;   // ← Adjust as needed
 	try {
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const title = config ? config.title : 'Memorial Gallery';
-
-		// Get sort parameter (default: random)
 		const sort = req.query.sort || 'random';
 		let dbPhotos;
 
@@ -99,8 +98,7 @@ router.get('/pictures', async (req, res) => {
 					{ createdAt: 'desc' }                           // tie-breaker / fallback
 				]
 			});
-		}
-		else if (sort === 'alpha') {
+		} else if (sort === 'alpha') {
 			// Let Prisma handle alpha sort by caption
 			dbPhotos = await req.prisma.photo.findMany({
 				where: { siteSlug },
@@ -109,8 +107,7 @@ router.get('/pictures', async (req, res) => {
 					{ createdAt: 'desc' }         // stable tie-breaker
 				]
 			});
-		} 
-		else {
+		} else {
 			// Random sort - ALWAYS fetch fresh and shuffle on the server
 			dbPhotos = await req.prisma.photo.findMany({
 				where: { siteSlug },
@@ -120,32 +117,37 @@ router.get('/pictures', async (req, res) => {
 		}
 
 		// Map to the format your EJS template expects
-		const images = dbPhotos.map(photo => ({
+		const allImages = dbPhotos.map(photo => ({
 			id: photo.id,
 			src: photo.image,
 			caption: photo.caption || '',
 			featured: photo.featured,
 		    bestMoment: photo.bestMoment
 		}));
+		const initialImages = allImages.slice(0, PAGE_SIZE);
 
 		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
-		if (req.query.sort) {
+		if (req.query.sort || req.query.loadMore) {
 			return res.json({
 				success: true,
-				sort: sort,
-				images: images,
-				title: title,
-				isAdmin: !!req.session?.isAdmin
+				sort,
+				images: initialImages,     // first page only
+				allImages: allImages,      // full list for load more
+				title,
+				isAdmin: !!req.session?.isAdmin,
+				pageSize: PAGE_SIZE
 			});
 		}
 
 		// Initial page load - use EJS
 		res.render('pictures', {
 			title,
-			images,
+			images: initialImages,
+			allImages,
 			sort,
 			searchQuery: '',
-			isAdmin: !!req.session?.isAdmin
+			isAdmin: !!req.session?.isAdmin,
+			pageSize: PAGE_SIZE
 		});
 	} catch (err) {
 		console.error('Pictures route error:', err);
