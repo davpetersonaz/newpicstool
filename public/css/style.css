@@ -206,12 +206,12 @@ p {
     margin-bottom: 1.4em;
 }
 
-.featured-image-container {
+.home-image-container {
     margin: 30px auto;
     max-width: 800px;
 }
 
-.featured_image {
+.home-image {
     border: 3px solid black;
     border-radius: 10px;
     display: block;
@@ -349,7 +349,6 @@ main h2 {
     text-align: center;
 }
 
-/* Optional: Make the "Found X images" paragraph also centered */
 main p {
     color: #555;
     margin-bottom: 25px;
@@ -380,11 +379,13 @@ main p {
 }
 
 .gallery-image {
+	cursor: zoom-in;
     display: block;
     height: 280px;
     max-width: 100%;
     object-fit: contain;
     width: auto;
+	z-index: 2;
 }
 
 .caption {
@@ -433,6 +434,110 @@ main p {
     background: #4CAF50;
     border-color: #4CAF50;
     color: white;
+}
+
+/* ==================== FEATURED ROW (Best Moments) ==================== */
+.featured-row {
+    align-items: center;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin: 50px 0 40px 0;
+    width: 100%;
+}
+
+.decor-left,
+.decor-right {
+    background: linear-gradient(to right, transparent, #333, transparent);
+    flex: 1;
+    height: 2px;
+    position: relative;
+}
+
+.decor-left::before,
+.decor-right::before {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100'%3E%3Cpath d='M0 50 Q100 10 200 50 Q300 90 400 50 Q500 10 600 50 Q700 90 800 50' fill='none' stroke='%23333' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+    background-size: contain;
+    content: '';
+    height: 50px;
+    opacity: 0.6;
+    position: absolute;
+    top: -25px;
+    width: 220px;
+}
+
+.decor-left::before {
+    left: 0;
+    transform: scaleX(-1);   /* mirror for left side */
+}
+
+.decor-right::before {
+    right: 0;
+}
+
+/* Featured Item Styling */
+.featured-item {
+    background: white;
+    border: 6px solid #222;
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    max-width: 800px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.featured-image {
+    display: block;
+    height: 520px;           /* taller than normal images */
+    object-fit: cover;
+    width: 100%;
+}
+
+.section-title {
+    color: #333;
+    font-size: 1.6em;
+    font-weight: 600;
+    margin: 60px 0 30px 0;
+    text-align: center;
+}
+
+/* Best Moments normal gallery */
+.best-gallery {
+    justify-content: center;
+}
+
+.best-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin: 40px 0;
+    width: 100%;
+}
+
+.best-row .gallery-item {
+    flex: 1 1 300px;           /* grow but keep reasonable minimum width */
+    margin-bottom: 20px;
+    max-width: 320px;
+}
+
+/* Optional: Make it exactly 3 per row on larger screens */
+@media (min-width: 1200px) {
+    .best-row .gallery-item {
+        flex: 1 1 32%;
+        max-width: 32%;
+    }
+}
+
+.best-moments-section {
+    margin: 60px 0;
+}
+
+.section-title {
+    color: #333;
+    font-size: 1.8em;
+    margin: 20px 0 40px 0;
+    text-align: center;
 }
 
 /* ==================== PAGINATION ==================== */
@@ -526,6 +631,7 @@ main p {
     background: white;
     border-radius: 8px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+	cursor: pointer;
     overflow: hidden;
     position: relative;
     transition: transform 0.2s ease;
@@ -554,6 +660,7 @@ main p {
     justify-content: space-between;
     padding: 10px 14px;
     width: 100%;
+	z-index: 5;
 }
 
 .feature-label {
@@ -590,11 +697,12 @@ main p {
     font-size: 18px;
     height: 36px;
     justify-content: center;
+	pointer-events: auto;
     position: absolute;
     right: 12px;
     top: 12px;
     width: 36px;
-    z-index: 20;
+    z-index: 10;
 }
 
 .gallery-item:hover .delete-overlay {

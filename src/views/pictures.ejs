@@ -11,62 +11,174 @@
 	<body>
 		<%- include('partials/header') %>
 		<main>
+			<% // === DEBUG / DEFENSIVE CHECKS ===
+			function verifyVariable(variable, name) {
+				if (typeof variable === 'undefined') {
+					console.error(`ERROR in pictures.ejs: '${name}' is undefined`);
+					return false;
+				}
+				return true;
+			}
+
+			// Verify critical variables
+			verifyVariable(allImages, 'allImages');
+			verifyVariable(images, 'images');
+			verifyVariable(featuredImages, 'featuredImages');
+			verifyVariable(bestImages, 'bestImages');
+			verifyVariable(sort, 'sort');
+			verifyVariable(title, 'title');
+			verifyVariable(searchQuery, 'searchQuery');
+			verifyVariable(isAdmin, 'isAdmin');
+			verifyVariable(pageSize, 'pageSize');
+			%>
+
 			<% if (searchQuery) { %>
 				<h2><%= title %></h2>
-				
-				<% if (allImages.length === 0) { %>
+        		<% if (allImages.length === 0) { %>
 					<p>No images found for "<%= searchQuery %>".</p>
 				<% } else { %>
 					<p>Found <%= allImages.length %> image<%= allImages.length !== 1 ? 's' : '' %>.</p>
 				<% } %>
-				
 			<% } else if (title) { %>
 				<h2><%= title %></h2>
-				<% if (allImages.length > 0) { %>
+		        <% if (allImages.length > 0) { %>
 					<p><%= allImages.length %> photos</p>
 				<% } %>
 			<% } %>
-
-			<div class="sort-buttons">
-				<a href="#" onclick="sortGallery('chrono'); return false;" class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
-				<a href="#" onclick="sortGallery('alpha'); return false;" class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
-				<a href="#" onclick="sortGallery('random'); return false;" class="sort-button <%= sort === 'random' ? 'active' : '' %>">Shuffle the Order</a>
-			</div>
+			
+			<% if (featuredImages.length === 0 && bestImages.length === 0) { %>
+				<div class="sort-buttons">
+					<a href="#" onclick="sortGallery('chrono'); return false;" class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
+					<a href="#" onclick="sortGallery('alpha'); return false;" class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
+					<a href="#" onclick="sortGallery('random'); return false;" class="sort-button <%= sort === 'random' ? 'active' : '' %>">Shuffle the Order</a>
+				</div>
+			<% } %>
 
 			<div class="gallery" id="gallery-container">
-				<% images.forEach(image => { %>
-					<div class="gallery-item" data-id="<%= image.id || '' %>">
-						<img src="<%= image.src || image.image %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
-						<div class="caption" onclick="editCaption(this)" title="Click to edit">
-							<%= image.caption || 'No caption' %>
-						</div>
-						<% if (isAdmin) { %>
-							<div class="admin-controls">
-								<label class="feature-label">
-									<input type="checkbox" <%= image.home ? 'checked' : '' %> 
-										onchange="toggleHome(this, <%= image.id %>)">
-									Home
-								</label>
-								<label class="feature-label">
-									<input type="checkbox" <%= image.bestMoment ? 'checked' : '' %> 
-										onchange="toggleBest(this, <%= image.id %>)">
-									Best
-								</label>
-								<label class="feature-label">
-									<input type="checkbox" <%= image.featured ? 'checked' : '' %> 
-										onchange="toggleFeature(this, <%= image.id %>)">
-									Featured
-								</label>
-								<button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">
-									🗑️
-								</button>
+
+				<!-- BEST MOMENTS + FEATURED INTERLEAVED -->
+				<% if (featuredImages.length > 0 || bestImages.length > 0) { %>
+					
+					<% 
+					const maxBestPerRow = 3;
+					let bestIndex = 0;
+					%>
+
+					<% featuredImages.forEach((featured, i) => { %>
+
+						<!-- Best Moments row BEFORE this featured (except first) -->
+						<% if (i > 0 && bestIndex < bestImages.length) { %>
+							<div class="best-row">
+								<% for (let j = 0; j < maxBestPerRow && bestIndex < bestImages.length; j++) { 
+									const image = bestImages[bestIndex++]; %>
+									<div class="gallery-item" data-id="<%= image.id %>">
+										<img src="<%= image.src %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
+										<div class="caption" onclick="editCaption(this)" title="Click to edit">
+											<%= image.caption || 'No caption' %>
+										</div>
+										<% if (isAdmin) { %>
+											<div class="admin-controls">
+												<label class="feature-label">
+													<input type="checkbox" <%= image.home ? 'checked' : '' %> onchange="toggleHome(this, <%= image.id %>)"> Home
+												</label>
+												<label class="feature-label">
+													<input type="checkbox" <%= image.bestMoment ? 'checked' : '' %> onchange="toggleBest(this, <%= image.id %>)"> Best
+												</label>
+												<label class="feature-label">
+													<input type="checkbox" <%= image.featured ? 'checked' : '' %> onchange="toggleFeature(this, <%= image.id %>)"> Featured
+												</label>
+												<button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">🗑️</button>
+											</div>
+										<% } %>
+									</div>
+								<% } %>
 							</div>
 						<% } %>
-					</div>
-				<% }) %>
+
+						<!-- Featured Image Row -->
+						<div class="featured-row">
+							<div class="decor-left"></div>
+							<div class="gallery-item featured-item" data-id="<%= featured.id %>">
+								<img src="<%= featured.src %>" alt="<%= featured.caption %>" class="gallery-image featured-image">
+								<div class="caption"><%= featured.caption || 'Featured Memory' %></div>
+								<% if (isAdmin) { %>
+									<div class="admin-controls">
+										<label class="feature-label">
+											<input type="checkbox" <%= featured.home ? 'checked' : '' %> onchange="toggleHome(this, <%= featured.id %>)"> Home
+										</label>
+										<label class="feature-label">
+											<input type="checkbox" <%= featured.bestMoment ? 'checked' : '' %> onchange="toggleBest(this, <%= featured.id %>)"> Best
+										</label>
+										<label class="feature-label">
+											<input type="checkbox" <%= featured.featured ? 'checked' : '' %> onchange="toggleFeature(this, <%= featured.id %>)"> Featured
+										</label>
+										<button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= featured.id %>">🗑️</button>
+									</div>
+								<% } %>
+							</div>
+							<div class="decor-right"></div>
+						</div>
+
+					<% }) %>
+
+					<!-- Remaining Best Moments after last Featured -->
+					<% if (bestIndex < bestImages.length) { %>
+						<div class="best-row">
+							<% while (bestIndex < bestImages.length) { 
+								const image = bestImages[bestIndex++]; %>
+								<div class="gallery-item" data-id="<%= image.id %>">
+									<img src="<%= image.src %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
+									<div class="caption" onclick="editCaption(this)" title="Click to edit">
+										<%= image.caption || 'No caption' %>
+									</div>
+									<% if (isAdmin) { %>
+										<div class="admin-controls">
+											<!-- checkboxes -->
+										</div>
+									<% } %>
+								</div>
+							<% } %>
+						</div>
+					<% } %>
+
+				<% } %>
+
+				<!-- ====================== NORMAL GALLERY (/pictures and /search) ====================== -->
+				<% if (featuredImages.length === 0 && bestImages.length === 0 && images.length > 0) { %>
+					<% images.forEach(image => { %>
+						<div class="gallery-item" data-id="<%= image.id || '' %>">
+							<img src="<%= image.src || image.image %>" alt="<%= image.caption %>" loading="lazy" class="gallery-image">
+							<div class="caption" onclick="editCaption(this)" title="Click to edit">
+								<%= image.caption || 'No caption' %>
+							</div>
+							<% if (isAdmin) { %>
+								<div class="admin-controls">
+									<label class="feature-label">
+										<input type="checkbox" <%= image.home ? 'checked' : '' %> 
+											onchange="toggleHome(this, <%= image.id %>)">
+										Home
+									</label>
+									<label class="feature-label">
+										<input type="checkbox" <%= image.bestMoment ? 'checked' : '' %> 
+											onchange="toggleBest(this, <%= image.id %>)">
+										Best
+									</label>
+									<label class="feature-label">
+										<input type="checkbox" <%= image.featured ? 'checked' : '' %> 
+											onchange="toggleFeature(this, <%= image.id %>)">
+										Featured
+									</label>
+									<button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">
+										🗑️
+									</button>
+								</div>
+							<% } %>
+						</div>
+					<% }) %>
+				<% } %>
 			</div>
 
-			<% if (allImages && allImages.length > images.length) { %>
+			<% if (featuredImages.length === 0 && bestImages.length === 0 && allImages.length > images.length) { %>
 				<div class="load-more-container" style="text-align:center; margin: 60px 0 100px;">
 					<button id="load-more-btn" class="btn btn-primary" onclick="loadMorePhotos()">
 						Load More Photos (<%= allImages.length - images.length %> remaining)
@@ -83,8 +195,8 @@
 
 		<script id="gallery-data" type="application/json">
 <%- JSON.stringify({
-	allPhotos: allImages || images,
-	initialCount: images.length,
+	allPhotos: allImages || featuredImages || bestImages || images || [],
+	initialCount: images.length || allImages.length,
 	pageSize: pageSize || 30,
 	isAdmin: !!isAdmin
 }) %>
@@ -303,19 +415,30 @@
 				const closeBtn = document.getElementById('close-modal');
 				if (!modal || !modalImg || !closeBtn) return;
 
-				// Click on any gallery image to open fullscreen
-				document.querySelectorAll('.gallery-image').forEach(img => {
-					img.addEventListener('click', () => {
+				// Use event delegation on the gallery container (catches new images)
+				const galleryContainer = document.getElementById('gallery-container');
+
+				galleryContainer.addEventListener('click', (e) => {
+					// Ignore clicks on admin controls or delete button
+					if (e.target.closest('.admin-controls') || 
+					    e.target.closest('.delete-overlay')) {
+					    return;
+					}
+
+					// Find the closest gallery image that was clicked
+					const img = e.target.closest('.gallery-image');
+					if (img) {
 						modal.style.display = 'flex';
 						modalImg.src = img.src;
 						modalImg.alt = img.alt || 'Photo';
-					});
+					}
 				});
 
 				// Close button
 				closeBtn.addEventListener('click', () => {
 					modal.style.display = 'none';
 				});
+				
 				// Click outside image to close
 				modal.addEventListener('click', (e) => {
 					if (e.target === modal) {

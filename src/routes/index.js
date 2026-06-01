@@ -41,18 +41,18 @@ router.get('/', async (req, res) => {
 			});
 		}
 
-		// Get all featured photos
-		const featuredPhotos = await req.prisma.photo.findMany({
-			where: { featured: true, siteSlug: SITE_SLUG }
+		// Get all home photos
+		const homePhotos = await req.prisma.photo.findMany({
+			where: { home: true, siteSlug: SITE_SLUG }
 		});
 
-		// Randomly select one featured photo (if any)
-		let featuredImage = null;
-		if (featuredPhotos.length > 0) {
+		// Randomly select one home photo (if any)
+		let homeImage = null;
+		if (homePhotos.length > 0) {
 			// Pick a random one
-			const randomIndex = Math.floor(Math.random() * featuredPhotos.length);
-			const selected = featuredPhotos[randomIndex];
-			featuredImage = {
+			const randomIndex = Math.floor(Math.random() * homePhotos.length);
+			const selected = homePhotos[randomIndex];
+			homeImage = {
 				src: selected.image,
 				alt: selected.caption || config.title
 			};
@@ -64,12 +64,11 @@ router.get('/', async (req, res) => {
 			title: config.title,
 			postTitle: config.postTitle,
 			bio: config.bio,
-			featuredImage
+			homeImage
 		});
 	} catch (error) {
 		console.error('Home route error:', error);
-        
-		res.render('index', { ...defaultConfig, featuredImage: null });
+		res.render('index', { ...defaultConfig, homeImage: null });
 	}
 });
 
@@ -138,6 +137,8 @@ router.get('/pictures', async (req, res) => {
 			title,
 			allImages,
 			images: initialImages,
+			featuredImages: [],
+			bestImages: [],
 			sort,
 			searchQuery: '',
 			isAdmin: !!req.session?.isAdmin,
@@ -224,6 +225,8 @@ router.get('/search', async (req, res) => {
 			title: `${baseTitle} — Search: "${query}"`,
 			allImages,
 			images: initialImages,
+			featuredImages: [],
+			bestImages: [],
 			sort,
 			searchQuery: query,
 			isAdmin: !!req.session?.isAdmin,
@@ -236,38 +239,68 @@ router.get('/search', async (req, res) => {
 	}
 });
 
-// Best moments route
+// Best Moments route
 router.get('/best', async (req, res) => {
 	try {
 		const config = await req.prisma.siteConfig.findFirst({
 			where: { siteSlug: SITE_SLUG }
 		});
-		const siteTitle = config ? config.title : 'Memorial Site';
+		const baseTitle = config?.title || 'Memorial Site';
 
+		// Get Featured photos (priority)
 		const featuredPhotos = await req.prisma.photo.findMany({
 			where: { 
 				featured: true, 
 				siteSlug: SITE_SLUG 
 			},
-			orderBy: [
-				{ takenAt: { sort: 'desc', nulls: 'last' } },   // primary sort: takenAt
-				{ createdAt: 'desc' }                           // fallback / tie-breaker
-			]
+			orderBy: { createdAt: 'desc' }
 		});
 
-		// Map to the format expected by your 'pictures' EJS template
-		const images = featuredPhotos.map(photo => ({
+		// Get Best Moments that are NOT featured
+		const bestPhotos = await req.prisma.photo.findMany({
+			where: { 
+				bestMoment: true,
+				featured: false,        // avoid duplicates
+				siteSlug: SITE_SLUG 
+			},
+			orderBy: { createdAt: 'desc' }
+		});
+
+		// Shuffle both arrays
+		const shuffledFeatured = shuffleArray(featuredPhotos);
+		const shuffledBest = shuffleArray(bestPhotos);
+
+		const featuredImages = shuffledFeatured.map(photo => ({
+			id: photo.id,
 			src: photo.image,
-			caption: photo.caption || ''
+			caption: photo.caption || '',
+			featured: true,
+			bestMoment: photo.bestMoment,
+			home: photo.home || false
 		}));
 
+		const bestImages = shuffledBest.map(photo => ({
+			id: photo.id,
+			src: photo.image,
+			caption: photo.caption || '',
+			featured: false,
+			bestMoment: true,
+			home: photo.home || false
+		}));
+
+		const allImages = [...featuredImages, ...bestImages];
+
 		res.render('pictures', {
-			headerTitle: config?.title || 'Memorial Site',
-			title: `${siteTitle} - Best Moments`,
-			images,
-			sort: 'chrono',      // tells the template which sort is active
+			headerTitle: baseTitle,                    // ← for the header
+			title: `${baseTitle} - Best Moments`,      // ← for the page <h2>
+			allImages,			// for load-more and sorting
+			images: allImages,	// fallback for normal logic
+			featuredImages,		// special layout
+			bestImages,			// normal gallery
+			sort: 'random',
 			searchQuery: '',
-			isAdmin: !!req.session?.isAdmin
+			isAdmin: !!req.session?.isAdmin,
+			pageSize: PAGE_SIZE
 		});
 	} catch (error) {
 		console.error('Best moments error:', error);
@@ -324,15 +357,22 @@ router.delete('/api/photo/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
-		if (!photo){ return res.status(404).json({ success: false, message: 'Photo not found' }); }
+		if (!photo) {
+			return res.status(404).json({ success: false, message: 'Photo not found' });
+		}
 
-		// Delete file from disk
-		const fs = await import('fs/promises');
-		const pathModule = await import('path');
-		const filePath = pathModule.join('public', 'images', photo.image);
-		await fs.unlink(filePath).catch(err => {
-			console.warn('File delete warning:', err.message);
-		});
+		// Delete from Vercel Blob if it's a URL
+		if (photo.image && photo.image.startsWith('http')) {
+			try {
+				const { del } = await import('@vercel/blob');
+				await del(photo.image, {
+					token: process.env.BLOB_READ_WRITE_TOKEN
+				});
+				// console.warn(`🗑️ Deleted from Vercel Blob: ${photo.image}`);
+			} catch (blobErr) {
+				console.warn('Vercel Blob delete warning:', blobErr.message);
+			}
+		} 
 
 		// Delete from database
 		await req.prisma.photo.delete({ where: { id: photoId } });

@@ -53,6 +53,7 @@ router.get('/', async (req, res) => {
 		if (isFirstSetup) {
 			config = { siteSlug: '', title: '', bio: '' };
 		}
+		const headerTitle = config?.title || 'Memorial Gallery';
 
 		// Get all photos for this site, newest first
 		const photos = await req.prisma.photo.findMany({
@@ -62,6 +63,7 @@ router.get('/', async (req, res) => {
 
 		//success/failure message
 		res.render('admin/dashboard', {
+			headerTitle: headerTitle,
 			title: 'Admin Dashboard',
 			config,
 			siteSlug,

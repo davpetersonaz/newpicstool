@@ -15,11 +15,11 @@
 				<h1><%= title %></h1>
 				<h3><%= postTitle %></h3>
 				
-				<% if (featuredImage) { %>
-					<div class="featured-image-container">
-						<img src="<%= featuredImage.src || featuredImage.image %>" 
-							alt="<%= featuredImage.alt || 'Featured Photo' %>" 
-							class="featured_image" loading="lazy">
+				<% if (homeImage) { %>
+					<div class="home-image-container">
+						<img src="<%= homeImage.src || homeImage.image %>" 
+							alt="<%= homeImage.alt || 'Homepage Photo' %>" 
+							class="home-image" loading="lazy">
 					</div>
 		        <% } %>
 				
