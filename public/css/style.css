@@ -220,6 +220,36 @@ p {
     width: 100%;
 }
 
+.gallery-link-container {
+    margin: 50px 0 30px 0;
+    text-align: center;
+}
+
+.btn-gallery {
+    background: #222;
+    border: 3px solid #222;
+    border-radius: 50px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    color: white;
+    display: inline-block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 16px 40px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gallery:hover {
+    background: white;
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+    color: #222;
+    transform: translateY(-3px);
+}
+
+.btn-gallery:active {
+    transform: scale(0.98);
+}
+
 /* ==================== ADMIN ==================== */
 .admin-container {
     background: white;
