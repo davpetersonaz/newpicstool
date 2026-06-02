@@ -39,6 +39,22 @@ model Photo {
     @@index([takenAt])
 }
 
+model Video {
+    id          Int      @id @default(autoincrement())
+    siteSlug    String
+    youtubeId   String   @unique   // e.g. "dQw4w9wgxcq"
+    title       String
+    description String?
+    thumbnail   String?
+    takenAt		DateTime?	// from YouTube
+	bestMoment  Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@index([siteSlug])
+    @@index([youtubeId])
+}
+
 model Admin {
     id        Int      @id @default(autoincrement())
     username  String   @unique

@@ -1,0 +1,187 @@
+<!-- src/views/admin/videos.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title><%= title %></title>
+	<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+	<%- include('../partials/header') %>
+
+	<div class="admin-container">
+		<h1>Manage Videos — <%= siteSlug %></h1>
+
+		<% if (typeof message !== 'undefined' && message) { %>
+			<div class="success-msg"><%= message %></div>
+		<% } %>
+
+		<!-- Playlist Import -->
+		<div class="admin-card">
+			<h2>Import from YouTube Playlist</h2>
+			<form method="POST" action="/admin/videos/import-playlist" id="import-form">
+				<div style="margin-bottom: 15px;">
+					<label class="form-label">Playlist ID or URL</label>
+					<input type="text" 
+						name="playlistId" 
+						id="playlistId"
+						placeholder="e.g. PLxxxxxxxxxxxxxxxx or full playlist URL" 
+						required 
+						style="width: 100%; padding: 12px;">
+				</div>
+				<button type="submit" class="btn btn-primary" id="import-btn">Import Playlist Videos</button>
+			</form>
+			<p style="font-size:0.9em; color:#666; margin-top:10px;">
+				Only new videos (not already in database) will be imported.
+			</p>
+		</div>
+
+		<!-- Add Single Video -->
+		<div class="admin-card">
+			<h2>Add Single Video</h2>
+			<form method="POST" action="/admin/videos/add">
+				<input type="text" name="youtubeUrl" placeholder="YouTube URL or ID" required>
+				<button type="submit">Add Video</button>
+			</form>
+		</div>
+
+		<!-- DANGER ZONE -->
+		<% if (videos && videos.length > 0) { %>
+			<div class="admin-card danger-zone" 
+				style="border: 2px solid #d9534f; background:#fff9f9;"
+				data-video-count="<%= videos ? videos.length : 0 %>"
+			>
+				<h2 style="color:#d9534f;">⚠️ Danger Zone</h2>
+				<button onclick="deleteAllVideos()" class="delete-all-btn">
+					🗑️ Delete ALL Videos
+				</button>
+				<p style="color:#d9534f; font-size:0.9em; margin-top:8px;">
+					This will permanently delete <strong><%= videos ? videos.length : 0 %></strong> videos.
+				</p>
+			</div>
+		<% } %>
+
+		<!-- Videos List -->
+		<div class="admin-card">
+			<h2>Existing Videos (<%= videos ? videos.length : 0 %>)</h2>
+			<% if (videos && videos.length > 0) { %>
+				<table class="admin-table">
+					<thead>
+						<tr>
+							<th>Preview</th>
+							<th>Title</th>
+							<th>Description</th>
+							<th>Taken</th>
+		                    <th>Best Moment</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						<% videos.forEach(video => { %>
+							<tr>
+								<td><img src="<%= video.thumbnail %>" class="video-thumb" loading="lazy" alt="Video thumbnail"></td>
+								<td><%= video.title %></td>
+								<td style="max-width: 420px;">
+									<%= video.description 
+										? video.description.substring(0, 140) + (video.description.length > 140 ? '...' : '') 
+										: '—' 
+									%>
+								</td>
+								<td><%= video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—' %></td>
+				                <td style="text-align: center;">
+				                    <input type="checkbox" 
+				                           <%= video.bestMoment ? 'checked' : '' %> 
+				                           onchange="toggleBestMoment(<%= video.id %>, this.checked)">
+				                </td>
+								<td>
+									<button data-id="<%= video.id %>" 
+										data-title="<%= video.title.replace(/"/g, '&quot;') %>"
+										class="delete-btn">Delete</button>
+								</td>
+							</tr>
+						<% }) %>
+					</tbody>
+				</table>
+			<% } else { %>
+				<p>No videos yet.</p>
+			<% } %>
+		</div>
+	</div>
+
+	<%- include('../partials/footer') %>
+
+	<script>
+		async function toggleBestMoment(videoId, isChecked) {
+			try {
+				const response = await fetch(`/admin/videos/toggle-best/${videoId}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' }
+				});
+
+				const data = await response.json();
+				if (!data.success) {
+					alert('Failed to update Best Moment status');
+					// Revert checkbox
+					event.target.checked = !isChecked;
+				}
+			} catch (err) {
+				console.error(err);
+				alert('Error updating Best Moment');
+				event.target.checked = !isChecked;
+			}
+		}
+
+		// Individual Video Delete
+		document.addEventListener('click', async function(e) {
+			if (e.target.classList.contains('delete-btn')) {
+				const videoId = e.target.dataset.id;
+				const title = e.target.dataset.title || 'this video';
+				if (!confirm(`Delete "${title}" permanently?`)){ return; }
+				try {
+					const response = await fetch(`/admin/videos/delete/${videoId}`, { method: 'DELETE' });
+					if (response.ok) {
+						location.reload();   // refresh to show updated list
+					} else {
+						alert('Failed to delete video');
+					}
+				} catch (err) {
+					console.error(err);
+					alert('Error deleting video');
+				}
+			}
+		});
+
+		// Delete ALL Videos
+		async function deleteAllVideos() {
+			const dangerCard = document.querySelector('.danger-zone');
+			const videoCount = dangerCard ? parseInt(dangerCard.dataset.videoCount) || 0 : 0;
+			if (videoCount === 0) {
+				alert("There are no videos to delete.");
+				return;
+			}
+			if (!confirm(`⚠️ WARNING: This will permanently delete ALL ${videoCount} videos for this site.`)) { return; }
+
+			try {
+				const response = await fetch('/admin/videos/delete-all', { method: 'DELETE' });
+				if (response.ok) {
+					alert(`Successfully deleted ${videoCount} videos.`);
+					location.reload();
+				} else {
+					alert('Failed to delete videos');
+				}
+			} catch (err) {
+				console.error(err);
+				alert('Error deleting videos');
+			}
+		}
+
+		// Disable button + show "Importing..." during playlist import
+		document.getElementById('import-form').addEventListener('submit', function() {
+			const btn = document.getElementById('import-btn');
+			btn.textContent = 'Importing... Please wait';
+			btn.disabled = true;
+		});
+	</script>
+</body>
+</html>

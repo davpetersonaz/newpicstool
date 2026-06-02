@@ -1,5 +1,7 @@
 /* /public/css/styles.css */
+
 /* ==================== BASE ==================== */
+
 * {
     box-sizing: border-box;
 }
@@ -16,6 +18,7 @@ body {
 }
 
 /* ==================== TYPOGRAPHY ==================== */
+
 h1 {
     font-size: 2.5em;
     font-weight: 600;
@@ -47,33 +50,39 @@ p {
 }
 
 /* ==================== HEADER ==================== */
+
 .header {
-    align-items: center;
     background-color: black;
     color: white;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    justify-content: space-between;
     padding: 12px 20px;
+    position: relative;
 }
 
-.link_area {
+.header-container {
     align-items: center;
     display: flex;
-    gap: 20px;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: 1400px;
+}
+
+.left-group {
+    align-items: center;
+    display: flex;
+    gap: 15px;	/* space between title and nav */
 }
 
 .home_link {
     color: white;
-    font-size: 1.6em;
+    font-size: 1.8em;
     font-weight: 600;
     text-decoration: none;
+	white-space: nowrap;
 }
 
-.nav_bar {
+.desktop-nav {
     display: flex;
-    gap: 15px;
+    gap: 12px;
 }
 
 .nav_button {
@@ -82,13 +91,87 @@ p {
     padding: 6px 12px;
     text-decoration: none;
     transition: background-color 0.2s;
+    white-space: nowrap;
 }
 
 .nav_button:hover {
-    background-color: rgba(255,255,255,0.1);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Remove any default link styling */
+.nav_bar a {
+    color: white;
+    text-decoration: none;
+}
+
+.header-right {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+}
+
+.hamburger {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+	display: none;
+    font-size: 28px;
+    padding: 4px 8px;
+}
+
+.search_form {
+    display: flex;
+    gap: 6px;
+}
+
+/* ==================== MOBILE ==================== */
+
+@media (max-width: 900px) {
+    .desktop-nav {
+        display: none;
+    }
+    .hamburger {
+        display: block;
+    }
+    .left-group {
+        gap: 15px;
+    }
+    .header-right {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .search_input {
+        width: 180px;
+    }
+}
+
+.mobile-menu {
+    background: #111;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.5);
+    display: none;
+    flex-direction: column;
+    left: 0;
+    padding: 15px 0;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 1000;
+}
+
+.mobile-menu a {
+    color: white;
+    padding: 12px 20px;
+    text-decoration: none;
+}
+
+.mobile-menu.active {
+    display: flex;
 }
 
 /* ==================== FOOTER ==================== */
+
 .footer {
     align-items: center;
     background-color: black;
@@ -96,6 +179,7 @@ p {
     color: white;
     display: flex;
     justify-content: space-between;
+	margin-top: 80px;
     padding: 15px 20px;
     position: fixed;
     width: 100%;
@@ -105,11 +189,6 @@ p {
 .copyright {
     color: white;
     margin: 0;
-}
-
-.admin-buttons {
-    display: flex;
-    gap: 10px;
 }
 
 .login_button {
@@ -130,7 +209,73 @@ p {
     color: black;
 }
 
+/* ==================== ADMIN DROPDOWN ==================== */
+
+.admin-dropdown {
+    display: inline-block;
+    position: relative;
+}
+
+/* creates an invisible bridge between button and dropdown menu */
+.admin-dropdown::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 95%;           /* creates a invisible bridge */
+    width: 100%;
+    height: 20px;          /* this is the magic gap filler */
+    z-index: 99998;
+}
+
+.admin-dropdown-btn {
+    background: #222;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 10px 18px;
+}
+
+.admin-dropdown-content {
+    background-color: #222;
+    border-radius: 6px;
+    bottom: 100%;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    display: none;
+    left: 0;
+    margin-bottom: 4px;
+    min-width: 220px;
+    padding: 8px 0;
+    position: absolute;
+    z-index: 99999;
+}
+
+.admin-dropdown-content a {
+    color: white;
+    display: block;
+    padding: 12px 16px;
+    text-decoration: none;
+}
+
+.admin-dropdown-content a:hover {
+    background-color: #444;
+}
+
+/* Hover support */
+.admin-dropdown:hover .admin-dropdown-content,
+.admin-dropdown-content:hover {
+    display: block;
+}
+
+/* Logout styling */
+.logout-link {
+    border-top: 1px solid #555;
+    color: #ff6b6b !important;
+}
+
 /* ==================== BUTTONS ==================== */
+
 .btn {
     border: none;
     border-radius: 6px;
@@ -172,6 +317,7 @@ p {
 }
 
 /* ==================== FORMS ==================== */
+
 .form-input {
     border: 1px solid #ccc;
     border-radius: 6px;
@@ -182,6 +328,7 @@ p {
 }
 
 /* ==================== HOME ==================== */
+
 .main-container {
     padding: 20px 0 90px 0;
     text-align: center;
@@ -251,6 +398,7 @@ p {
 }
 
 /* ==================== ADMIN ==================== */
+
 .admin-container {
     background: white;
     border-radius: 12px;
@@ -258,6 +406,7 @@ p {
     margin: 40px auto;
     max-width: 1300px;
     padding: 35px;
+	padding-bottom: 100px;
 }
 
 .admin-card {
@@ -316,6 +465,7 @@ p {
 }
 
 /* ==================== TABLE ==================== */
+
 .admin-table {
     border-collapse: collapse;
     width: 100%;
@@ -338,6 +488,7 @@ p {
 }
 
 /* ============= ADMIN UPLOAD DROP ZONE ============ */
+
 .drop-zone {
     background: #fafafa;
     border: 3px dashed #ccc;
@@ -373,6 +524,7 @@ p {
 }
 
 /* ==================== GALLERY ==================== */
+
 main h2 {
     color: #212529;
     margin: 30px 0 15px 0;
@@ -467,6 +619,7 @@ main p {
 }
 
 /* ==================== FEATURED ROW (Best Moments) ==================== */
+
 .featured-row {
     align-items: center;
     display: flex;
@@ -571,6 +724,7 @@ main p {
 }
 
 /* ==================== PAGINATION ==================== */
+
 .pagination {
     align-items: center;
     display: flex;
@@ -616,6 +770,7 @@ main p {
 }
 
 /* ==================== FULLSCREEN IMAGE LIGHTBOX ==================== */
+
 #fullscreen-modal {
     align-items: center;
     background-color: rgba(0, 0, 0, 0.98);
@@ -657,6 +812,7 @@ main p {
 }
 
 /* ==================== ADMIN GALLERY CONTROLS ==================== */
+
 .gallery-item {
     background: white;
     border-radius: 8px;
@@ -744,7 +900,102 @@ main p {
     transform: scale(1.1);
 }
 
+/* =================== VIDEOS ==================== */
+
+.video-grid {
+    display: grid;
+    gap: 35px;
+    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 30px;
+    max-width: 1400px;
+    padding: 0 20px;
+}
+
+.video-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+	height: 100%;
+    overflow: hidden;
+}
+
+.video-wrapper {
+    background: #000;
+    height: 0;
+    overflow: hidden;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    position: relative;
+}
+
+.video-wrapper iframe {
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+.video-info {
+    flex-grow: 1;
+    padding: 18px 20px;
+}
+
+.video-info h3 {
+    font-size: 1.1em;
+    line-height: 1.4;
+    margin: 0 0 10px 0;
+}
+
+.video-description {
+    color: #555;
+    font-size: 0.95em;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Make it more responsive */
+@media (max-width: 900px) {
+    .video-grid {
+        gap: 25px;
+        grid-template-columns: 1fr;   /* 1 column on smaller screens */
+    }
+}
+
+/* ==================== ADMIN VIDEOS TABLE ==================== */
+
+.admin-table .video-thumb {
+    border-radius: 6px;
+    display: block;
+    height: 70px;
+    object-fit: cover;
+    width: 120px;
+}
+
+.admin-table td:first-child,
+.admin-table th:first-child {
+    text-align: center;
+    width: 140px;
+}
+
+.admin-table td {
+    vertical-align: middle;
+}
+
+/* Make sure long titles/captions wrap nicely */
+.admin-table td:nth-child(2),
+.admin-table td:nth-child(3) {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ==================== OTHER ==================== */
+
 .success-msg {
     background: #d4edda;
     border-left: 5px solid #4CAF50;
@@ -768,6 +1019,7 @@ main p {
 }
 
 /* ==================== ADMIN LOGIN ==================== */
+
 body.admin-login {
     align-items: center;
     background: #f4f4f4;
@@ -833,6 +1085,7 @@ body.admin-login {
 }
 
 /* ==================== LOGIN MODAL ==================== */
+
 .modal {
     align-items: center;
     background: rgba(0, 0, 0, 0.75);

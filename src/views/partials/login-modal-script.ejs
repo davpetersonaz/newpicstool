@@ -1,12 +1,16 @@
 <!-- /src/views/partials/login-modal-script.ejs -->
 <script>
     function showLoginModal() {
-        document.getElementById('login-modal').style.display = 'flex';
-        // Focus username field
+        const modal = document.getElementById('login-modal');
+		modal.style.display = 'flex';
+        // Focus username field with small delay to ensure DOM is ready
         setTimeout(() => {
-            const usernameField = document.querySelector('#login-form input[name="username"]');
-            if (usernameField) usernameField.focus();
-        }, 100);
+            const usernameField = document.getElementById('username');
+            if (usernameField){
+				usernameField.focus();
+				usernameField.select();
+			}
+        }, 150);
     }
 
     function hideLoginModal() {

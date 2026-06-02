@@ -269,7 +269,6 @@ router.get('/best', async (req, res) => {
 		// Shuffle both arrays
 		const shuffledFeatured = shuffleArray(featuredPhotos);
 		const shuffledBest = shuffleArray(bestPhotos);
-
 		const featuredImages = shuffledFeatured.map(photo => ({
 			id: photo.id,
 			src: photo.image,
@@ -278,7 +277,6 @@ router.get('/best', async (req, res) => {
 			bestMoment: photo.bestMoment,
 			home: photo.home || false
 		}));
-
 		const bestImages = shuffledBest.map(photo => ({
 			id: photo.id,
 			src: photo.image,
@@ -287,7 +285,6 @@ router.get('/best', async (req, res) => {
 			bestMoment: true,
 			home: photo.home || false
 		}));
-
 		const allImages = [...featuredImages, ...bestImages];
 
 		res.render('pictures', {
@@ -305,6 +302,79 @@ router.get('/best', async (req, res) => {
 	} catch (error) {
 		console.error('Best moments error:', error);
 		res.status(500).send('Error loading best moments');
+	}
+});
+
+// ====================== VIDEOS ======================
+router.get('/videos', async (req, res) => {
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const showBestOnly = req.query.best === 'true';
+	const sort = req.query.sort || 'random';
+
+	try {
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
+		const baseTitle = config?.title || 'Memorial Site';
+		const whereClause = { siteSlug };
+		if (showBestOnly) {
+			whereClause.bestMoment = true;
+		}
+		let dbVideos = [];
+
+		if (sort === 'chrono') {
+			dbVideos = await req.prisma.video.findMany({
+				where: whereClause,
+				orderBy: { takenAt: 'desc' }
+			});
+		} else if (sort === 'alpha') {
+			dbVideos = await req.prisma.video.findMany({
+				where: whereClause,
+				orderBy: { title: 'asc' }
+			});
+		} else { // Random
+			dbVideos = await req.prisma.video.findMany({
+				where: whereClause,
+				orderBy: { createdAt: 'desc' }
+			});
+			dbVideos = shuffleArray(dbVideos);
+		}
+
+		const videos = dbVideos.map(v => ({
+			id: v.id,
+			youtubeId: v.youtubeId,
+			title: v.title,
+			description: v.description,
+			thumbnail: v.thumbnail,
+			takenAt: v.takenAt,
+			bestMoment: v.bestMoment
+		}));
+
+		// Dynamic page title
+		const pageTitle = showBestOnly 
+			? `${baseTitle} - Video Best Moments` 
+			: `${baseTitle} - Videos`;
+
+		// If AJAX sort/filter request
+		if (req.query.sort || req.query.best) {
+			return res.json({
+				success: true,
+				videos,
+				sort,
+				showBestOnly
+			});
+		}
+
+		// Normal page load
+		res.render('videos', {
+			headerTitle: baseTitle,
+			title: pageTitle,
+			videos,
+			sort,
+			showBestOnly: !!showBestOnly
+		});
+
+	} catch (err) {
+		console.error('Videos route error:', err);
+		res.status(500).send('Error loading videos');
 	}
 });
 

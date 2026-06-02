@@ -6,13 +6,15 @@ import path from 'path';
 import ExifReader from 'exifreader';
 import express from 'express';
 import multer from 'multer';
+import fetch from 'node-fetch';
 import sharp from 'sharp';
 
 import { isAuthenticated } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Multer for bulk upload (max 20 files)
+// ====================== MULTER SETUP ======================
+
 const upload = multer({
 	storage: multer.memoryStorage(),
 	limits: { fileSize: 20 * 1024 * 1024 } // 20MB per file
@@ -21,7 +23,7 @@ const upload = multer({
 // Protect ALL admin routes
 router.use(isAuthenticated);
 
-// ====================== HELPER FUNCTIONS ======================
+// ====================== HELPERS ======================
 
 async function updateEnvSlug(newSlug) {
 	try {
@@ -40,9 +42,8 @@ async function updateEnvSlug(newSlug) {
 	}
 }
 
-// ====================== ROUTES ======================
+// ====================== DASHBOARD ======================
 
-// GET /admin - Dashboard
 router.get('/', async (req, res) => {
 	try {
 		const siteSlug = process.env.SITE_SLUG || 'slug';
@@ -53,22 +54,12 @@ router.get('/', async (req, res) => {
 		if (isFirstSetup) {
 			config = { siteSlug: '', title: '', bio: '' };
 		}
-		const headerTitle = config?.title || 'Memorial Gallery';
 
-		// Get all photos for this site, newest first
-		const photos = await req.prisma.photo.findMany({
-			where: { siteSlug },
-			orderBy: { createdAt: 'desc' }
-		});
-
-		//success/failure message
 		res.render('admin/dashboard', {
-			headerTitle: headerTitle,
+			headerTitle: config?.title || 'Memorial Site',
 			title: 'Admin Dashboard',
 			config,
 			siteSlug,
-			photos,
-			message: req.query.message || null,
 			isFirstSetup,
 			isAdmin: true
 		});
@@ -78,45 +69,31 @@ router.get('/', async (req, res) => {
 	}
 });
 
-// POST /admin/update - site settings
-router.post('/update', async (req, res) => {
-	const { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
-	if (!title || !bio) {
-		return res.status(400).send('Title and bio are required');
-	}
-	const finalSlug = submittedSlug.trim() || process.env.SITE_SLUG || 'slug';
+// ====================== PHOTOS MANAGEMENT ======================
+
+router.get('/photos', async (req, res) => {
 	try {
-		await req.prisma.siteConfig.upsert({
-			where: { siteSlug: finalSlug },
-			update: { 
-				preTitle: (preTitle || '').trim(),
-				title, 
-				postTitle: (postTitle || '').trim(),
-				bio 
-			},
-			create: { 
-				siteSlug: finalSlug, 
-				preTitle: (preTitle || '').trim(),
-				title, 
-				postTitle: (postTitle || '').trim(),
-				bio 
-			}
+		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const photos = await req.prisma.photo.findMany({
+			where: { siteSlug },
+			orderBy: { createdAt: 'desc' }
 		});
 
-		// If this was first setup, update .env file
-		if (!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug') {
-			await updateEnvSlug(finalSlug);
-		}
-
-		res.redirect('/admin?message=Site settings saved successfully.');
-	} catch(error) {
-		console.error(error);
-		res.status(500).send('Error saving site settings');
+		res.render('admin/photos', {
+			title: 'Manage Photos',
+			headerTitle: 'Manage Photos',
+			siteSlug,
+			photos,
+			isAdmin: true
+		});
+	} catch (error) {
+		console.error('Photos page error:', error);
+		res.status(500).send('Error loading photos');
 	}
 });
 
-// POST /admin/upload - bulk upload of photos
-router.post('/upload', (req, res, next) => {
+// Upload photos
+router.post('/photos/upload', (req, res, next) => {
 	upload(req, res, (err) => {
 		if (err) {
 			if (err.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -237,11 +214,11 @@ router.post('/upload', (req, res, next) => {
 	const message = `Upload complete: ${success} photos added.` + 
                    (duplicates ? ` ${duplicates} duplicate(s) skipped.` : '');
 
-	res.redirect(`/admin?message=${encodeURIComponent(message)}`);
+	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
 });
 
-// POST /admin/upload - delete photo
-router.post('/delete/:id', async (req, res) => {
+// Delete photo
+router.post('/photos/delete/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 
@@ -260,15 +237,15 @@ router.post('/delete/:id', async (req, res) => {
 		// Delete from database
 		await req.prisma.photo.delete({ where: { id: photoId } });
 
-		res.redirect('/admin?message=Photo deleted successfully.');
+		res.redirect('/admin/photos?message=Photo deleted successfully.');
 	} catch (error) {
 		console.error(error);
 		res.status(500).send('Failed to delete photo');
 	}
 });
 
-// POST /admin/update-taken/:id
-router.post('/update-taken/:id', async (req, res) => {
+// Update taken date
+router.post('/photos/update-taken/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const { takenAt } = req.body;
 	const siteSlug = process.env.SITE_SLUG || 'slug';
@@ -291,6 +268,255 @@ router.post('/update-taken/:id', async (req, res) => {
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ success: false });
+	}
+});
+
+// ====================== VIDEOS MANAGEMENT ======================
+
+// GET /admin/videos
+router.get('/videos', async (req, res) => {
+	try {
+		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const videos = await req.prisma.video.findMany({
+			where: { siteSlug },
+			orderBy: { createdAt: 'desc' }
+		});
+
+		res.render('admin/videos', {
+			title: 'Manage Videos',
+			headerTitle: 'Manage Videos',
+			siteSlug,
+			videos,
+			isAdmin: true
+		});
+	} catch (error) {
+		console.error('Videos page error:', error);
+		res.status(500).send('Error loading videos');
+	}
+});
+
+// Toggle Best Moment for Video
+router.post('/videos/toggle-best/:id', async (req, res) => {
+	const videoId = parseInt(req.params.id);
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+
+	try {
+		const video = await req.prisma.video.findUnique({ where: { id: videoId } });
+		if (!video || video.siteSlug !== siteSlug) {
+			return res.status(404).json({ success: false, message: 'Video not found' });
+		}
+		const newValue = !video.bestMoment;
+
+		await req.prisma.video.update({
+			where: { id: videoId },
+			data: { bestMoment: newValue }
+		});
+
+		res.json({ success: true, newValue });
+	} catch (error) {
+		console.error('Toggle bestMoment error:', error);
+		res.status(500).json({ success: false });
+	}
+});
+
+// POST /admin/videos/import-playlist
+router.post('/videos/import-playlist', async (req, res) => {
+	const { playlistId } = req.body;
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const apiKey = process.env.YOUTUBE_API_KEY;
+	if (!playlistId){ return res.status(400).send('Playlist ID is required'); }
+	if (!apiKey){ return res.status(500).send('YouTube API key is not configured'); }
+
+	try {
+		// Clean playlist ID if full URL was pasted
+		let cleanId = playlistId.trim();
+		const match = playlistId.match(/list=([a-zA-Z0-9_-]+)/);
+		if (match){ cleanId = match[1]; }
+		let imported = 0;   // new videos
+		let updated = 0;    // metadata changed
+		let skipped = 0;    // no change
+		let nextPageToken = '';
+
+		do {
+			const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${cleanId}&maxResults=50&key=${apiKey}${nextPageToken ? '&pageToken=' + nextPageToken : ''}`;
+
+			const playlistRes = await fetch(playlistUrl);
+			const playlistData = await playlistRes.json();
+			if (!playlistData.items) break;
+
+			for (const item of playlistData.items) {
+				const youtubeId = item.snippet.resourceId.videoId;
+
+				// === SECOND CALL: Get detailed video info including recordingDate ===
+				const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,recordingDetails&id=${youtubeId}&key=${apiKey}`;
+				const videoRes = await fetch(videoUrl);
+				const videoData = await videoRes.json();
+				const snippet = videoData.items?.[0]?.snippet || item.snippet;
+				const recordingDetails = videoData.items?.[0]?.recordingDetails || {};
+
+				const title = snippet.title;
+				const description = snippet.description || null;
+				// Prefer recordingDate if available, otherwise fall back to takenAt
+				let takenAt = null;
+				if (recordingDetails.recordingDate) {
+					takenAt = new Date(recordingDetails.recordingDate);
+				} else if (snippet.takenAt) {
+					takenAt = new Date(snippet.takenAt);
+				}
+
+				const thumbnail = snippet.thumbnails?.maxres?.url || 
+					snippet.thumbnails?.high?.url ||
+					snippet.thumbnails?.medium?.url ||
+					`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+
+				// Check if already exists
+				const existing = await req.prisma.video.findUnique({ where: { youtubeId } });
+				if (existing) {
+					// Check if anything changed
+					const titleChanged = existing.title !== title;
+					const descChanged = existing.description !== description;
+					const dateChanged = existing.takenAt?.getTime() !== takenAt?.getTime();
+					if (titleChanged || descChanged || dateChanged) {
+						await req.prisma.video.update({
+							where: { youtubeId },
+							data: { title, description, thumbnail, takenAt }
+						});
+						updated++;
+					} else {
+						skipped++;
+					}
+					continue;
+				}
+
+				// New video
+				await req.prisma.video.create({
+					data: {
+						siteSlug,
+						youtubeId,
+						title,
+						description,
+						thumbnail,
+						takenAt
+					}
+				});
+				imported++;
+			}
+
+			nextPageToken = playlistData.nextPageToken;
+		} while (nextPageToken);
+
+		const message = `Import complete: ${imported} new, ${updated} updated, ${skipped} skipped.`;
+		res.redirect(`/admin/videos?message=${encodeURIComponent(message)}`);
+	} catch (error) {
+		console.error('Playlist import error:', error);
+		res.status(500).send('Failed to import playlist. Check console.');
+	}
+});
+
+// POST /admin/videos/add
+router.post('/videos/add', async (req, res) => {
+	const { youtubeUrl } = req.body;
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+	if (!youtubeUrl){ return res.status(400).send('YouTube URL is required'); }
+
+	try {
+		// Extract YouTube ID
+		let youtubeId = youtubeUrl.trim();
+		const match = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]+)/);
+		if (match){ youtubeId = match[1]; }
+
+		// Auto-fetch metadata from YouTube (optional but very nice)
+		const title = youtubeId;
+		const description = null;
+		const takenAt = null;
+		const thumbnail = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+
+		await req.prisma.video.create({
+			data: {
+				siteSlug,
+				youtubeId,
+				title,
+				description,
+				thumbnail,
+				takenAt
+			}
+		});
+
+		res.redirect('/admin/videos?message=Video added successfully');
+	} catch (error) {
+		console.error(error);
+		res.status(500).send('Failed to add video');
+	}
+});
+
+// DELETE ALL VIDEOS
+router.delete('/videos/delete-all', async (req, res) => {
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+	try {
+		const deleted = await req.prisma.video.deleteMany({ where: { siteSlug } });
+		console.warn(`Deleted ${deleted.count} videos for ${siteSlug}`);
+		res.json({ success: true, count: deleted.count });
+	} catch (error) {
+		console.error('Delete all videos error:', error);
+		res.status(500).json({ success: false });
+	}
+});
+
+// DELETE /admin/videos/delete/:id
+router.delete('/videos/delete/:id', async (req, res) => {
+	const videoId = parseInt(req.params.id);
+	const siteSlug = process.env.SITE_SLUG || 'slug';
+
+	try {
+		const video = await req.prisma.video.findUnique({
+			where: { id: videoId }
+		});
+		if (!video || video.siteSlug !== siteSlug) {
+			return res.status(404).json({ success: false, message: 'Video not found' });
+		}
+		await req.prisma.video.delete({ where: { id: videoId } });
+		res.json({ success: true });
+	} catch (error) {
+		console.error('Video delete error:', error);
+		res.status(500).json({ success: false, message: 'Failed to delete video' });
+	}
+});
+
+// ====================== SITE SETTINGS ======================
+
+router.post('/update', async (req, res) => {
+	const { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
+	if (!title || !bio) {
+		return res.status(400).send('Title and bio are required');
+	}
+	const finalSlug = submittedSlug.trim() || process.env.SITE_SLUG || 'slug';
+	try {
+		await req.prisma.siteConfig.upsert({
+			where: { siteSlug: finalSlug },
+			update: { 
+				preTitle: (preTitle || '').trim(),
+				title, 
+				postTitle: (postTitle || '').trim(),
+				bio 
+			},
+			create: { 
+				siteSlug: finalSlug, 
+				preTitle: (preTitle || '').trim(),
+				title, 
+				postTitle: (postTitle || '').trim(),
+				bio 
+			}
+		});
+
+		// If this was first setup, update .env file
+		if (!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug') {
+			await updateEnvSlug(finalSlug);
+		}
+
+		res.redirect('/admin?message=Site settings saved successfully.');
+	} catch(error) {
+		console.error(error);
+		res.status(500).send('Error saving site settings');
 	}
 });
 

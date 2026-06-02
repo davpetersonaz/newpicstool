@@ -1,0 +1,429 @@
+<!-- /src/views/admin/photos.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><%= title %></title>
+        <link rel="stylesheet" href="/css/style.css">
+    </head>
+    <body>
+        <%- include('../partials/header') %>
+
+        <div class="admin-container">
+            <h1>Manage Photos — <%= siteSlug %></h1>
+
+				<% if (typeof message !== 'undefined' && message) { %>
+				    <div class="success-msg"><%= message %></div>
+				<% } %>
+
+
+            <!-- Bulk Upload -->
+            <div class="admin-card">
+                <h2>Bulk Photo Upload</h2>
+            	<p>Drag & drop multiple photos here, or click to select files. Max 30 per upload.</p>
+                
+                <div id="drop-zone" class="drop-zone">
+                    <p>Drag & drop images here</p>
+                    <p>or</p>
+                    <label class="upload-label">
+                        <input type="file" id="file-input" name="photos" accept="image/*" multiple required style="display:none;">
+                        <span class="btn btn-primary">Choose Files</span>
+                    </label>
+                </div>
+
+                <form id="upload-form" method="POST" action="/admin/photos/upload" enctype="multipart/form-data" style="display:none;">
+                    <input type="file" name="photos" id="hidden-file-input" multiple accept="image/*">
+                </form>
+
+                <div id="upload-status" class="upload-status" style="display:none; margin-top:15px;"></div>
+            </div>
+
+            <hr>
+
+	        <!-- Photos Table -->
+            <div id="controlsBar" class="controls-bar">
+                <h2>Uploaded Photos (<%= photos.length %> total)</h2>
+                <div class="per-page-container">
+                    <label>
+                        Show
+                        <select id="itemsPerPage" onchange="changePageSize()" class="form-input">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        per page
+                    </label>
+                </div>
+            </div>
+
+            <table id="photoTable" class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Thumbnail</th>
+                        <th onclick="sortTable(1)" class="sortable">Original Filename</th>
+                        <th onclick="sortTable(2)" class="sortable" 
+							title="Date the photo was taken&#10;&#10;(e) = from EXIF data&#10;(f) = derived from filename&#10;(m) = manually entered"
+						>
+							Taken
+						</th>
+                        <th onclick="sortTable(3)" class="sortable">Added</th>
+                        <th>Dimensions</th>
+                        <th onclick="sortTable(5)" class="sortable">Caption</th>
+						<th onclick="sortTable(6)" class="sortable">Home</th>
+                        <th onclick="sortTable(7)" class="sortable">Best</th>
+                        <th onclick="sortTable(8)" class="sortable">Feature</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <% photos.forEach(photo => { %>
+                        <tr>
+                            <td>
+                                <img src="<%= photo.image %>" 
+                                    class="photo-thumb" 
+									loading="lazy"
+                                    alt="<%= photo.originalFilename ? photo.originalFilename.replace(/\.[^/.]+$/, '') : 'Photo' %>">
+                            </td>
+                            <td><%= photo.originalFilename %></td>
+                            <td class="taken-cell" data-id="<%= photo.id %>">
+                                <% if (photo.takenAt) { %>
+                                    <span class="taken-date"><%= photo.takenAt.toISOString().split('T')[0] %></span>
+                                    <% if (photo.takenAtSource) { %>
+										<small class="taken-source" 
+											title="<%= 
+												photo.takenAtSource === 'exif' ? 'Extracted from photo EXIF metadata' : 
+												photo.takenAtSource === 'filename' ? 'Derived from the original filename' : 
+												photo.takenAtSource === 'manual' ? 'Manually entered by admin' : 
+												'Date source unknown' 
+											%>"
+										>
+											(<%= 
+												photo.takenAtSource === 'exif' ? 'e' : 
+												photo.takenAtSource === 'filename' ? 'f' : 
+												photo.takenAtSource === 'manual' ? 'm' : 
+												photo.takenAtSource 
+											%>)
+										</small>
+                                    <% } %>
+                                <% } else { %>
+                                    <span class="taken-date">—</span>
+                                <% } %>
+                            </td>
+                            <td><%= photo.createdAt.toISOString().split('T')[0] %></td>
+                            <td><%= photo.width %> × <%= photo.height %></td>
+                            <td class="truncated" 
+                                title="<%= photo.caption || '' %>"
+                                data-full-caption="<%= photo.caption || '' %>"
+                            >
+                                <%= photo.caption ? photo.caption.substring(0, 30) + (photo.caption.length > 30 ? '...' : '') : '—' %>
+                            </td>
+                            <td>
+								<input type="checkbox" <%= photo.home ? 'checked' : '' %> 
+									onchange="toggleHome(this, <%= photo.id %>)">
+							</td>
+							<td>
+								<input type="checkbox" <%= photo.bestMoment ? 'checked' : '' %> 
+									onchange="toggleBest(this, <%= photo.id %>)">
+							</td>
+							<td>
+								<input type="checkbox" <%= photo.featured ? 'checked' : '' %> 
+									onchange="toggleFeature(this, <%= photo.id %>)">
+							</td>
+                            <td>
+                                <form method="POST" action="/admin/photos/delete/<%= photo.id %>" 
+                                  	onsubmit="return confirm('Delete this photo permanently?')"
+                                >
+                                    <button type="submit" class="delete-btn">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination"></div>
+
+            <div class="back-link">
+	            <a href="/admin">← Back to Dashboard</a>
+            </div>
+        </div>
+
+		<%- include('../partials/admin-scripts') %>
+        <%- include('../partials/footer') %>
+
+        <script>
+            let currentPage = 1;
+            let itemsPerPage = 25;
+            let allRows = [];	// This must hold the FULL dataset at all times
+            let currentSortCol = null;
+            let currentSortDir = false; // false = ascending, true = descending
+
+            function renderPage() {
+                const tbody = document.getElementById("tableBody");
+                tbody.innerHTML = '';
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = Math.min(start + itemsPerPage, allRows.length);
+                for (let i = start; i < end; i++) {
+                    tbody.appendChild(allRows[i].cloneNode(true));   // clone to avoid moving DOM nodes
+                }
+                renderPagination();
+                scrollToTableTop();
+            }
+
+            function scrollToTableTop() {
+                const controls = document.getElementById("controlsBar");
+                if (controls) {
+                    controls.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"        // Scroll so the top of the element is at the top of the viewport
+                    });
+                }
+            }
+
+            function renderPagination() {
+                const totalPages = Math.ceil(allRows.length / itemsPerPage);
+                if (totalPages <= 1) {
+                    document.getElementById("pagination").innerHTML = '';
+                    return;
+                }
+
+                let html = `<button onclick="prevPage()" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+
+                // Always show first page
+                html += currentPage === 1 
+                    ? `<button class="active">1</button>` 
+                    : `<button onclick="goToPage(1)">1</button>`;
+
+                // Left ellipsis
+                if (currentPage > 4) {
+                    html += `<span class="ellipsis">...</span>`;
+                }
+
+                // Pages around current page
+                const start = Math.max(2, currentPage - 2);
+                const end = Math.min(totalPages - 1, currentPage + 2);
+                for (let i = start; i <= end; i++) {
+                    if (i === currentPage) {
+                        html += `<button class="active">${i}</button>`;
+                    } else {
+                        html += `<button onclick="goToPage(${i})">${i}</button>`;
+                    }
+                }
+
+                // Right ellipsis
+                if (currentPage < totalPages - 3) {
+                    html += `<span class="ellipsis">...</span>`;
+                }
+
+                // Always show last page
+                if (totalPages > 1) {
+                    html += currentPage === totalPages 
+                        ? `<button class="active">${totalPages}</button>` 
+                        : `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+                }
+                html += `<button onclick="nextPage()" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+
+                document.getElementById("pagination").innerHTML = html;
+            }
+
+            function goToPage(page) {
+                currentPage = page;
+                renderPage();
+            }
+
+            function prevPage() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage();
+                }
+            }
+
+            function nextPage() {
+                const totalPages = Math.ceil(allRows.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage();
+                }
+            }
+
+            function changePageSize() {
+                itemsPerPage = parseInt(document.getElementById("itemsPerPage").value);
+                currentPage = 1;
+                renderPage();
+            }
+
+            function sortTable(colIndex) {
+                const tbody = document.getElementById("tableBody");
+                const rows = Array.from(tbody.rows);
+
+                // Toggle sort direction
+                if (currentSortCol === colIndex) {
+                    currentSortDir = !currentSortDir;
+                } else {
+                    currentSortDir = false; // false = ascending, true = descending
+                }
+                currentSortCol = colIndex;
+
+                // Sort the full dataset
+                const sortedRows = [...allRows].sort((a, b) => {
+					let valA, valB;
+
+					// Checkbox columns (Featured, Best, Home)
+					if (colIndex === 6 || colIndex === 7 || colIndex === 8) {
+						const checkboxA = a.cells[colIndex].querySelector('input[type="checkbox"]');
+						const checkboxB = b.cells[colIndex].querySelector('input[type="checkbox"]');
+						valA = checkboxA ? checkboxA.checked : false;
+						valB = checkboxB ? checkboxB.checked : false;
+					} 
+					// Special case for Caption column (col 5) - use full text from data attribute
+					else if (colIndex === 5) {
+						valA = a.cells[colIndex].dataset.fullCaption || a.cells[colIndex].textContent.trim();
+						valB = b.cells[colIndex].dataset.fullCaption || b.cells[colIndex].textContent.trim();
+						valA = valA.toLowerCase();
+						valB = valB.toLowerCase();
+					} 
+					// Date columns: Taken (2) and Added (3)
+					else if (colIndex === 2 || colIndex === 3) {
+						valA = a.cells[colIndex].textContent.trim();
+						valB = b.cells[colIndex].textContent.trim();
+						if (valA === '—') valA = '0000-00-00';
+						if (valB === '—') valB = '0000-00-00';
+					} 
+					// Other text columns (Filename, etc.)
+					else {
+						valA = a.cells[colIndex].textContent.trim().toLowerCase();
+						valB = b.cells[colIndex].textContent.trim().toLowerCase();
+					}
+
+					if (valA < valB) return currentSortDir ? 1 : -1;
+					if (valA > valB) return currentSortDir ? -1 : 1;
+					return 0;
+                });
+
+                allRows = sortedRows;
+                currentPage = 1;	// Always reset to page 1 after sorting
+                renderPage();
+            }
+
+            // Initialize — capture ALL rows once
+            window.onload = () => {
+                allRows = Array.from(document.getElementById("tableBody").rows);
+                renderPage();
+            };
+
+            // Inline text editing for Taken date
+            document.addEventListener('click', function(e) {
+                const cell = e.target.closest('.taken-cell');
+                if (!cell) return;
+
+                const dateSpan = cell.querySelector('.taken-date');
+                if (!dateSpan) return;
+
+                const photoId = cell.dataset.id;
+                const currentText = dateSpan.textContent === '—' ? '' : dateSpan.textContent;
+
+                // Create text input
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentText;
+                input.style.width = '110px';
+                input.style.fontSize = '14px';
+                input.placeholder = 'YYYY-MM-DD';
+
+                // Replace span with input
+                dateSpan.replaceWith(input);
+                input.focus();
+                input.select();
+
+                const saveDate = async () => {
+                    const newDateStr = input.value.trim();
+                    if (newDateStr === currentText) {
+                        input.replaceWith(dateSpan);
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/admin/update-taken/${photoId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ takenAt: newDateStr || null })
+                        });
+                        if (response.ok) {
+                            if (newDateStr) {
+                                dateSpan.textContent = newDateStr;
+                            } else {
+                                dateSpan.textContent = '—';
+                            }
+                            input.replaceWith(dateSpan);
+                        } else {
+                            alert('Failed to update date');
+                            input.replaceWith(dateSpan);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('Error updating date');
+                        input.replaceWith(dateSpan);
+                    }
+                };
+
+                input.addEventListener('blur', saveDate);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveDate();
+                    }
+                    if (e.key === 'Escape') {
+                        input.replaceWith(dateSpan);
+                    }
+                });
+            });
+
+            <!-- Drag & Drop Upload Script -->
+            function initDragAndDrop() {
+                const dropZone = document.getElementById('drop-zone');
+                const fileInput = document.getElementById('file-input');
+                const hiddenInput = document.getElementById('hidden-file-input');
+                const uploadForm = document.getElementById('upload-form');
+                const statusDiv = document.getElementById('upload-status');
+                if (!dropZone || !fileInput) return;
+
+                // Click to open file dialog
+                dropZone.addEventListener('click', () => {
+                    fileInput.click();
+                });
+
+                // File input change → submit form (keeps your existing feedback)
+                fileInput.addEventListener('change', () => {
+                    if (fileInput.files.length > 0) {
+                        hiddenInput.files = fileInput.files; // copy files
+                        uploadForm.submit(); // submit the real form
+                    }
+                });
+
+                // Drag events
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('dragover');
+                });
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+
+                    if (e.dataTransfer.files.length > 0) {
+                        hiddenInput.files = e.dataTransfer.files;
+                        uploadForm.submit(); // submit the real form
+                    }
+                });
+            }
+
+            // Initialize when page loads
+            document.addEventListener('DOMContentLoaded', initDragAndDrop);
+        </script>
+    </body>
+</html>

@@ -1,14 +1,62 @@
 <!-- /src/views/partials/header.ejs -->
 <header class="header">
-    <div class="link_area">
-        <a href="/" class="home_link"><%= headerTitle %></a>
-        <nav class="nav_bar">
-            <a href="/pictures" class="nav_button">Gallery</a>
-            <a href="/best" class="nav_button">Best Moments</a>
-        </nav>
-    </div>
-    <form class="search_form" action="/search" method="GET">
-        <input class="search_input" type="text" name="q" placeholder="Search photos...">
-        <button class="search_button" type="submit">Search</button>
-    </form>
+    <div class="header-container">
+        <!-- Left group: Title + Nav -->
+		<a href="/" class="home_link"><%= headerTitle || 'Memorial Site' %></a>
+
+		<!-- Desktop Navigation -->
+		<nav class="nav_bar desktop-nav">
+			<a href="/pictures" class="nav_button">Gallery</a>
+			<a href="/best" class="nav_button">Best Moments</a>
+			<a href="/videos" class="nav_button">Videos</a>
+		</nav>
+
+        <!-- Right: Search + Hamburger -->
+        <div class="header-right">
+			<button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
+			<form class="search_form" action="/search" method="GET">
+				<input class="search_input" type="text" name="q" placeholder="Search photos...">
+				<button class="search_button" type="submit">🔍</button>
+			</form>
+		</div>
+	</div>
+
+    <!-- Mobile Menu -->
+    <nav class="mobile-menu" id="mobile-menu">
+        <a href="/pictures">Gallery</a>
+        <a href="/best">Best Moments</a>
+        <a href="/videos">Videos</a>
+    </nav>
 </header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const hamburger = document.getElementById('hamburger');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (!hamburger || !mobileMenu) return;
+
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            mobileMenu.classList.toggle('active');
+            
+            // Optional: change icon to X when open
+            hamburger.textContent = mobileMenu.classList.contains('active') ? '✕' : '☰';
+        });
+
+        // Close menu when clicking a link
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+                hamburger.textContent = '☰';
+            });
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!hamburger.contains(e.target) && !mobileMenu.contains(e.target)) {
+                mobileMenu.classList.remove('active');
+                hamburger.textContent = '☰';
+            }
+        });
+    });
+</script>
