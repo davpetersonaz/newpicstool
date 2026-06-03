@@ -82,15 +82,10 @@ p {
 .header-container {
     align-items: center;
     display: flex;
+    gap: 15px;
     justify-content: space-between;
     margin: 0 auto;
     max-width: 1400px;
-}
-
-.left-group {
-    align-items: center;
-    display: flex;
-    gap: 15px;	/* space between title and nav */
 }
 
 .home_link {
@@ -117,12 +112,6 @@ p {
 
 .nav_button:hover {
     background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Remove any default link styling */
-.nav_bar a {
-    color: white;
-    text-decoration: none;
 }
 
 .header-right {
@@ -155,16 +144,26 @@ p {
     .hamburger {
         display: block;
     }
-    .left-group {
-        gap: 15px;
-    }
-    .header-right {
-        align-items: flex-end;
+    /* Center title on mobile */
+    .header-container {
+        align-items: center;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
     }
+    .home_link {
+        text-align: center;
+    }
+
+    /* Search + Hamburger on second line, search left, hamburger right */
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+    }
+
     .search_input {
-        width: 180px;
+        max-width: 240px;
+        width: 68%;
     }
 }
 
@@ -616,7 +615,7 @@ main p {
     width: 100%;
 }
 
-/* Sort buttons */
+/* ==================== SORT BUTTONS ==================== */
 .sort-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -634,6 +633,7 @@ main p {
     padding: 10px 18px;
     text-decoration: none;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .sort-button:hover {
@@ -646,6 +646,21 @@ main p {
     color: white;
 }
 
+/* ==================== MOBILE - STACK VERTICALLY ==================== */
+@media (max-width: 768px) {
+    .sort-buttons {
+        align-items: center;
+        flex-direction: column;
+    }
+
+    .sort-button {
+        font-size: 16px;
+        max-width: 320px;     /* keeps them from becoming too wide */
+        padding: 12px 20px;
+        text-align: center;
+        width: 100%;
+    }
+}
 /* ==================== FEATURED ROW (Best Moments) ==================== */
 
 .featured-row {

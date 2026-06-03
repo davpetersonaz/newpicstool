@@ -1,7 +1,7 @@
 <!-- /src/views/partials/header.ejs -->
 <header class="header">
     <div class="header-container">
-        <!-- Left group: Title + Nav -->
+        <!-- Title - centered on mobile -->
 		<a href="/" class="home_link"><%= headerTitle || 'Memorial Site' %></a>
 
 		<!-- Desktop Navigation -->
@@ -11,13 +11,13 @@
 			<a href="/videos" class="nav_button">Videos</a>
 		</nav>
 
-        <!-- Right: Search + Hamburger -->
+        <!-- Right side on desktop, full controls on mobile -->
         <div class="header-right">
-			<button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
 			<form class="search_form" action="/search" method="GET">
 				<input class="search_input" type="text" name="q" placeholder="Search photos...">
 				<button class="search_button" type="submit">🔍</button>
 			</form>
+			<button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
 		</div>
 	</div>
 

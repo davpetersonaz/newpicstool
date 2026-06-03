@@ -47,9 +47,7 @@ async function updateEnvSlug(newSlug) {
 router.get('/', async (req, res) => {
 	try {
 		const siteSlug = process.env.SITE_SLUG || 'slug';
-		let config = await req.prisma.siteConfig.findFirst({ 
-			where: { siteSlug }
-		});
+		let config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const isFirstSetup = !config;
 		if (isFirstSetup) {
 			config = { siteSlug: '', title: '', bio: '' };
@@ -74,14 +72,15 @@ router.get('/', async (req, res) => {
 router.get('/photos', async (req, res) => {
 	try {
 		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const photos = await req.prisma.photo.findMany({
 			where: { siteSlug },
 			orderBy: { createdAt: 'desc' }
 		});
 
 		res.render('admin/photos', {
+			headerTitle: config?.title || 'Memorial Site',
 			title: 'Manage Photos',
-			headerTitle: 'Manage Photos',
 			siteSlug,
 			photos,
 			isAdmin: true
@@ -277,14 +276,15 @@ router.post('/photos/update-taken/:id', async (req, res) => {
 router.get('/videos', async (req, res) => {
 	try {
 		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const videos = await req.prisma.video.findMany({
 			where: { siteSlug },
 			orderBy: { createdAt: 'desc' }
 		});
 
 		res.render('admin/videos', {
+			headerTitle: config?.title || 'Memorial Site',
 			title: 'Manage Videos',
-			headerTitle: 'Manage Videos',
 			siteSlug,
 			videos,
 			isAdmin: true
