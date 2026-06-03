@@ -1,5 +1,6 @@
 <!-- /src/views/partials/admin-scripts.ejs -->
 <script>
+    // ====================== EXISTING FUNCTIONS (updated) ======================
 	async function toggleHome(checkbox, photoId) {
 		try {
 			const res = await fetch(`/api/photo/${photoId}/toggle`, {
@@ -7,8 +8,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ field: 'home' })
 			});
+            if (handleAuthError(res)){ return; }
 			const data = await res.json();
-			if (!data.success) checkbox.checked = !checkbox.checked;
+			if (!data.success){ checkbox.checked = !checkbox.checked; }
 		} catch (e) {
 			checkbox.checked = !checkbox.checked;
 		}
@@ -21,6 +23,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ field: 'bestMoment' })
 			});
+            if (handleAuthError(res)){ return; }
 			const data = await res.json();
 			if (!data.success){ checkbox.checked = !checkbox.checked; }
 		} catch (e) {
@@ -35,6 +38,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ field: 'featured' })
 			});
+            if (handleAuthError(res)){ return; }
 			const data = await res.json();
 			if (!data.success){ checkbox.checked = !checkbox.checked; }
 		} catch (e) {
@@ -51,6 +55,7 @@
 		if (!confirm('Delete this photo permanently?')){ return; }
 		try {
 			const res = await fetch(`/api/photo/${photoId}`, { method: 'DELETE' });
+            if (handleAuthError(res)){ return; }
 			const data = await res.json();
 			if (data.success) {
 				const item = btn.closest('.gallery-item') || btn.closest('tr');

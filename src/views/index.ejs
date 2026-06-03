@@ -1,42 +1,42 @@
 <!-- src/views/index.ejs -->
 <!DOCTYPE html>
-<html>
-	<head>
-		<title><%= title %></title>
-		<link rel="stylesheet" href="/css/style.css">
-		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-	</head>
-	<body>
-		<%- include('partials/header') %>
-		
-		<main class="main-container">
-			<div class="section">
-				<h4><%= preTitle %></h4>
-				<h1><%= title %></h1>
-				<h3><%= postTitle %></h3>
-				
-				<% if (homeImage) { %>
-					<div class="home-image-container">
-						<img src="<%= homeImage.src || homeImage.image %>" 
-							alt="<%= homeImage.alt || 'Homepage Photo' %>" 
-							class="home-image" loading="lazy">
-					</div>
-		        <% } %>
-				
-				<section class="bio">
-					<%- bio %>
-				</section>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title><%= title %></title>
+	<link rel="stylesheet" href="/css/style.css">
+	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+	<%- include('partials/header') %>
+	
+	<main class="main-container">
+		<div class="section">
+			<h4><%= preTitle %></h4>
+			<h1><%= title %></h1>
+			<h3><%= postTitle %></h3>
+			
+			<% if (homeImage) { %>
+				<div class="home-image-container">
+					<img src="<%= homeImage.src || homeImage.image %>" 
+						alt="<%= homeImage.alt || 'Homepage Photo' %>" 
+						class="home-image" loading="lazy">
+				</div>
+			<% } %>
+			
+			<section class="bio">
+				<%- bio %>
+			</section>
 
-                <div class="gallery-link-container">
-                    <a href="/pictures" class="btn-gallery">
-                        View the Picture Gallery
-                    </a>
-                </div>
+			<div class="gallery-link-container">
+				<a href="/pictures" class="btn-gallery">
+					View the Picture Gallery
+				</a>
 			</div>
-		</main>
+		</div>
+	</main>
 
-        <%- include('partials/footer') %>
-        <%- include('partials/login-modal') %>
-        <%- include('partials/login-modal-script') %>
-	</body>
+	<%- include('partials/footer') %>
+</body>
 </html>

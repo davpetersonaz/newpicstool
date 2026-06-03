@@ -1,29 +1,30 @@
 <!-- /src/views/admin/login.ejs -->
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title><%= title %></title>
-		<link rel="stylesheet" href="/css/styles.css">
-	</head>
-	<body class="admin-login">
-		<div class="login-container">
-			<h1>Admin Login</h1>
-			
-			<% if (error) { %>
-				<p class="error"><%= error %></p>
-			<% } %>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title><%= title %></title>
+	<link rel="stylesheet" href="/css/style.css">
+	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="admin-login">
+	<div class="login-container">
+		<h1>Admin Login</h1>
+		
+		<% if (error) { %>
+			<p class="error"><%= error %></p>
+		<% } %>
 
-			<form method="POST" action="/admin/login">
-				<input type="text" name="username" placeholder="Username" required autofocus>
-				<input type="password" name="password" placeholder="Password" required>
-				<button type="submit">Login</button>
-			</form>
+		<form method="POST" action="/admin/login">
+			<input type="text" name="username" placeholder="Username" required autofocus>
+			<input type="password" name="password" placeholder="Password" required>
+			<button type="submit">Login</button>
+		</form>
 
-			<div class="back-link">
-				<a href="/">← Back to Site</a>
-			</div>
+		<div class="back-link">
+			<a href="/">← Back to Site</a>
 		</div>
-	</body>
+	</div>
+</body>
 </html>

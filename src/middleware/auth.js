@@ -19,6 +19,21 @@ export const isAuthenticated = (req, res, next) => {
 	if (req.session?.isAdmin) {
 		return next();
 	}
+
+	// This is an AJAX / fetch request (most admin actions)
+	if (req.headers['accept']?.includes('application/json') || 
+        req.xhr || 
+        req.path.startsWith('/api/') ||
+        req.path.includes('/toggle') ||
+        req.path.includes('/delete')) {
+		return res.status(401).json({ 
+			success: false, 
+			message: 'Session expired. Please log in again.',
+			requireLogin: true 
+		});
+	}
+
+	// Normal browser navigation → redirect
 	res.redirect('/admin/login?error=Please log in');
 };
 

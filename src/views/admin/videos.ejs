@@ -3,9 +3,10 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 	<title><%= title %></title>
 	<link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 	<%- include('../partials/header') %>
@@ -112,18 +113,18 @@
 	<%- include('../partials/footer') %>
 
 	<script>
+		// ====================== VIDEO BEST MOMENT TOGGLE ======================
 		async function toggleBestMoment(videoId, isChecked) {
 			try {
 				const response = await fetch(`/admin/videos/toggle-best/${videoId}`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' }
 				});
-
+            	if (handleAuthError(response)){ return; }
 				const data = await response.json();
 				if (!data.success) {
 					alert('Failed to update Best Moment status');
-					// Revert checkbox
-					event.target.checked = !isChecked;
+					event.target.checked = !isChecked; // Revert checkbox
 				}
 			} catch (err) {
 				console.error(err);
@@ -132,7 +133,7 @@
 			}
 		}
 
-		// Individual Video Delete
+    	// ====================== INDIVIDUAL VIDEO DELETE ======================
 		document.addEventListener('click', async function(e) {
 			if (e.target.classList.contains('delete-btn')) {
 				const videoId = e.target.dataset.id;
@@ -140,6 +141,7 @@
 				if (!confirm(`Delete "${title}" permanently?`)){ return; }
 				try {
 					const response = await fetch(`/admin/videos/delete/${videoId}`, { method: 'DELETE' });
+	            	if (handleAuthError(response)){ return; }
 					if (response.ok) {
 						location.reload();   // refresh to show updated list
 					} else {
@@ -152,7 +154,7 @@
 			}
 		});
 
-		// Delete ALL Videos
+    	// ====================== DELETE ALL VIDEOS ======================
 		async function deleteAllVideos() {
 			const dangerCard = document.querySelector('.danger-zone');
 			const videoCount = dangerCard ? parseInt(dangerCard.dataset.videoCount) || 0 : 0;
@@ -161,9 +163,9 @@
 				return;
 			}
 			if (!confirm(`⚠️ WARNING: This will permanently delete ALL ${videoCount} videos for this site.`)) { return; }
-
 			try {
 				const response = await fetch('/admin/videos/delete-all', { method: 'DELETE' });
+            	if (handleAuthError(response)){ return; }
 				if (response.ok) {
 					alert(`Successfully deleted ${videoCount} videos.`);
 					location.reload();
@@ -176,7 +178,7 @@
 			}
 		}
 
-		// Disable button + show "Importing..." during playlist import
+    	// ====================== IMPORT BUTTON ======================
 		document.getElementById('import-form').addEventListener('submit', function() {
 			const btn = document.getElementById('import-btn');
 			btn.textContent = 'Importing... Please wait';

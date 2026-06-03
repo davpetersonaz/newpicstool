@@ -1,0 +1,11 @@
+<!-- /src/views/partials/auth-helper.ejs -->
+<script>
+    // Global helper to handle expired sessions gracefully
+    function handleAuthError(response) {
+        if (response.status === 401) {
+            showLoginModal();   // Show your nice login modal
+            return true;
+        }
+        return false;
+    }
+</script>

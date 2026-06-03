@@ -1,6 +1,9 @@
 <!-- /src/views/partials/footer.ejs -->
 <footer class="footer">
-    <p class="copyright">&copy; <%= new Date().getFullYear() %> <%= title || 'Memorial Site' %></p>
+	<!-- include auth-helper at the top to avoid race conditions on the admin/photos view -->
+	<%- include('auth-helper') %>
+
+	<p class="copyright">&copy; <%= new Date().getFullYear() %> <%= title || 'Memorial Site' %></p>
     
     <% if (isAdmin) { %>
         <div class="admin-dropdown">
@@ -51,3 +54,6 @@
         });
     });
 </script>
+
+<%- include('login-modal') %>
+<%- include('login-modal-script') %>
