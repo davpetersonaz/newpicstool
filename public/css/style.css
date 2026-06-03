@@ -49,6 +49,27 @@ p {
     margin: 8px 0;
 }
 
+/* ==================== MOBILE TYPOGRAPHY ==================== */
+
+@media (max-width: 900px) {
+    body {
+        font-size: 17.5px;
+    }
+    h1 {
+        font-size: 2.35em;
+    }
+    h2, h3 {
+        font-size: 1.7em;
+    }
+    .bio {
+        font-size: 1.2em;
+        line-height: 1.7;
+    }
+    p {
+        font-size: 1.1em;
+    }
+}
+
 /* ==================== HEADER ==================== */
 
 .header {
