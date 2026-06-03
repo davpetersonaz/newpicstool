@@ -1232,7 +1232,7 @@ body.admin-login {
     background: #dee06e;
     border: none;
     border-radius: 50%;
-    bottom: 100px;           /* Above the fixed footer */
+    bottom: 100px; /* Above the fixed footer */
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     color: #222;
     cursor: pointer;
@@ -1240,7 +1240,7 @@ body.admin-login {
     font-size: 24px;
     height: 50px;
     justify-content: center;
-    opacity: 0.75;
+    opacity: 0.85;
     position: fixed;
     right: 20px;
     transition: all 0.3s ease;
@@ -1252,16 +1252,13 @@ body.admin-login {
     display: flex;
 }
 
-.go-to-top-btn:hover {
+.go-to-top-btn:active {
     background: #f0f4a0;
-	box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-    opacity: 1 !important;
-    transform: scale(1.12);
+    opacity: 1;
+    transform: scale(1.15);
 }
 
-/* Hide on desktop */
-@media (min-width: 901px) {
+/* Slight lift on touch devices */
     .go-to-top-btn {
-        display: none !important;
-    }
+    touch-action: manipulation;
 }
