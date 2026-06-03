@@ -1,6 +1,6 @@
 <!-- /src/views/partials/footer.ejs -->
 <footer class="footer">
-	<!-- include auth-helper at the top to avoid race conditions on the admin/photos view -->
+	<!-- Auth helper first (important for admin pages) -->
 	<%- include('auth-helper') %>
 
 	<p class="copyright">&copy; <%= new Date().getFullYear() %> <%= title || 'Memorial Site' %></p>
@@ -20,9 +20,36 @@
     <% } else { %>
         <button onclick="showLoginModal()" class="login_button">Admin Login</button>
     <% } %>
+
+    <!-- Floating Go to Top Button -->
+	<button id="go-to-top" class="go-to-top-btn" aria-label="Go to top">↑</button>
 </footer>
 
+<%- include('login-modal') %>
+<%- include('login-modal-script') %>
+
 <script>
+	// Go to Top Button
+	const goToTopBtn = document.getElementById('go-to-top');
+
+	function handleScroll() {
+		if (window.scrollY > 500) {
+			goToTopBtn.classList.add('show');
+		} else {
+			goToTopBtn.classList.remove('show');
+		}
+	}
+
+	goToTopBtn.addEventListener('click', () => {
+		window.scrollTo({
+			top: 0,
+			behavior: 'smooth'
+		});
+	});
+
+	window.addEventListener('scroll', handleScroll);
+
+    // Admin Dropdown
     document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('admin-menu-btn');
         const menu = document.getElementById('admin-dropdown-content');
@@ -54,6 +81,3 @@
         });
     });
 </script>
-
-<%- include('login-modal') %>
-<%- include('login-modal-script') %>
