@@ -25,6 +25,21 @@ router.use(isAuthenticated);
 
 // ====================== HELPERS ======================
 
+async function uploadToBlob(buffer, originalName, hash) {
+	const { put } = await import('@vercel/blob');
+    
+	const ext = path.extname(originalName).toLowerCase();
+	const pathname = `images/${hash.slice(0, 12)}${ext}`;
+
+	const blob = await put(pathname, buffer, {
+		access: 'public',
+		addRandomSuffix: false,
+		contentType: `image/${ext.slice(1) || 'jpeg'}`,
+	});
+
+	return blob.url; // Full public URL (e.g. https://...vercel-storage.com/...)
+}
+
 async function updateEnvSlug(newSlug) {
 	try {
 		const envPath = path.join(process.cwd(), '.env');
@@ -91,7 +106,7 @@ router.get('/photos', async (req, res) => {
 	}
 });
 
-// Upload photos
+// ====================== UPLOAD PHOTOS (Vercel Blob) ======================
 router.post('/photos/upload', (req, res, next) => {
 	upload(req, res, (err) => {
 		if (err) {
@@ -125,12 +140,9 @@ router.post('/photos/upload', (req, res, next) => {
 			// Get image dimensions
 			const metadata = await sharp(file.buffer).metadata();
 
-			// Create safe filename
-			const ext = path.extname(file.originalname).toLowerCase();
-			const safeFilename = `${hash.slice(0, 12)}${ext}`;
+			// Upload to Vercel Blob
+			const imageUrl = await uploadToBlob(file.buffer, file.originalname, hash);
 
-			// Save the actual image file
-			await fs.writeFile(path.join('public', 'images', safeFilename), file.buffer);
 			const baseName = path.basename(file.originalname, path.extname(file.originalname));
 
 			// Extract date from EXIF first, then fallback to filename
@@ -193,7 +205,7 @@ router.post('/photos/upload', (req, res, next) => {
 			await req.prisma.photo.create({
 				data: {
 					siteSlug,
-					image: safeFilename,
+					image: imageUrl,
 					originalFilename: file.originalname,
 					hash,
 					width: metadata.width,
@@ -216,7 +228,7 @@ router.post('/photos/upload', (req, res, next) => {
 	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
 });
 
-// Delete photo
+// ====================== DELETE PHOTO ======================
 router.post('/photos/delete/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const siteSlug = process.env.SITE_SLUG || 'slug';
@@ -229,9 +241,17 @@ router.post('/photos/delete/:id', async (req, res) => {
 			return res.status(404).send('Photo not found');
 		}
 
-		// Delete file from disk
-		const filePath = path.join('public', 'images', photo.image);
-		await fs.unlink(filePath).catch(() => { }); // ignore if file doesn't exist
+		// Delete from Vercel Blob if it's a URL
+		if (photo.image && photo.image.startsWith('http')) {
+			try {
+				const { del } = await import('@vercel/blob');
+				await del(photo.image, {
+					token: process.env.BLOB_READ_WRITE_TOKEN
+				});
+			} catch (blobErr) {
+				console.warn('Vercel Blob delete warning:', blobErr.message);
+			}
+		} 
 
 		// Delete from database
 		await req.prisma.photo.delete({ where: { id: photoId } });

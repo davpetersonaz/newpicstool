@@ -195,15 +195,29 @@ p {
 .footer {
     align-items: center;
     background-color: black;
-    bottom: 0;
     color: white;
     display: flex;
     justify-content: space-between;
 	margin-top: 80px;
     padding: 15px 20px;
-    position: fixed;
     width: 100%;
     z-index: 100;
+}
+
+/* Sticky footer on desktop */
+@media (min-width: 901px) {
+    .footer {
+        position: fixed;
+        bottom: 0;
+    }
+}
+
+/* Normal footer on mobile (at the end of content) */
+@media (max-width: 900px) {
+    .footer {
+        position: relative;
+        margin-top: 60px;     /* breathing room before footer */
+    }
 }
 
 .copyright {
@@ -584,39 +598,6 @@ main p {
     text-align: center;
 }
 
-.gallery {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    justify-content: center;
-    padding: 20px 20px 40px;
-}
-
-.gallery-item {
-    align-items: center;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: transform 0.2s ease;
-}
-
-.gallery-item:hover {
-    transform: translateY(-4px);
-}
-
-.gallery-image {
-	cursor: zoom-in;
-    display: block;
-    height: 280px;
-    max-width: 100%;
-    object-fit: contain;
-    width: auto;
-	z-index: 2;
-}
-
 .caption {
     align-items: center;
     background: #f9f9f9;
@@ -681,77 +662,85 @@ main p {
         width: 100%;
     }
 }
-/* ==================== FEATURED ROW (Best Moments) ==================== */
+/* ==================== BEST MOMENTS ==================== */
 
+.best-moments-section {
+    margin: 60px 0;
+}
+
+.section-title {
+    color: #333;
+    font-size: 1.8em;
+    margin: 20px 0 40px 0;
+    text-align: center;
+}
+
+/* Featured Row - Fancy layout on desktop only */
 .featured-row {
     align-items: center;
     display: flex;
     gap: 20px;
     justify-content: center;
-    margin: 50px 0 40px 0;
+    margin: 60px 0 50px 0;
     width: 100%;
 }
 
-.decor-left,
-.decor-right {
-    background: linear-gradient(to right, transparent, #333, transparent);
-    flex: 1;
-    height: 2px;
-    position: relative;
-}
-
-.decor-left::before,
-.decor-right::before {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100'%3E%3Cpath d='M0 50 Q100 10 200 50 Q300 90 400 50 Q500 10 600 50 Q700 90 800 50' fill='none' stroke='%23333' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
-    background-size: contain;
-    content: '';
-    height: 50px;
-    opacity: 0.6;
-    position: absolute;
-    top: -25px;
-    width: 220px;
-}
-
-.decor-left::before {
-    left: 0;
-    transform: scaleX(-1);   /* mirror for left side */
-}
-
-.decor-right::before {
-    right: 0;
-}
-
-/* Featured Item Styling */
 .featured-item {
     background: white;
-    border: 6px solid #222;
-    border-radius: 12px;
+    border: 8px solid #222;
+    border-radius: 16px;
     box-shadow: 0 15px 35px rgba(0,0,0,0.25);
-    max-width: 800px;
+    max-width: 920px;
     overflow: hidden;
     width: 100%;
 }
 
 .featured-image {
+	border-radius: 8px;
     display: block;
-    height: 520px;           /* taller than normal images */
-    object-fit: cover;
-    width: 100%;
+    height: auto !important;
+	max-height: 700px !important;
+	min-height: 0 !important;
+    object-fit: contain !important;
+    width: 100% !important;
 }
 
-.section-title {
-    color: #333;
-    font-size: 1.6em;
-    font-weight: 600;
-    margin: 60px 0 30px 0;
-    text-align: center;
+@media (min-width: 901px) {
+    .featured-image {
+        max-height: 740px !important;
+    }
+
+	.decor-left,
+	.decor-right {
+		background: linear-gradient(to right, transparent, #333, transparent);
+		flex: 1;
+		height: 2px;
+		position: relative;
+	}
+
+	.decor-left::before,
+	.decor-right::before {
+		background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100'%3E%3Cpath d='M0 50 Q100 10 200 50 Q300 90 400 50 Q500 10 600 50 Q700 90 800 50' fill='none' stroke='%23333' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+		background-size: contain;
+		content: '';
+		height: 50px;
+		opacity: 0.6;
+		position: absolute;
+		top: -25px;
+		width: 220px;
+	}
+
+	.decor-left::before {
+		left: 0;
+		transform: scaleX(-1);   /* mirror for left side */
+	}
+
+	.decor-right::before {
+		right: 0;
+	}
 }
 
-/* Best Moments normal gallery */
-.best-gallery {
-    justify-content: center;
-}
-
+/* Normal best row on desktop */
 .best-row {
     display: flex;
     flex-wrap: wrap;
@@ -763,11 +752,53 @@ main p {
 
 .best-row .gallery-item {
     flex: 1 1 300px;           /* grow but keep reasonable minimum width */
-    margin-bottom: 20px;
     max-width: 320px;
 }
 
-/* Optional: Make it exactly 3 per row on larger screens */
+/* Normal gallery items (including best moments) */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    padding: 20px 20px 40px;
+}
+
+.gallery-item {
+	align-items: center;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+	display: flex;
+	flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.featured-row .gallery-item {
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    border: 10px solid #222;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px);
+}
+
+.gallery-image:not(.featured-image) {
+	cursor: zoom-in;
+    display: block;
+    height: 280px;
+    max-width: 100%;
+    object-fit: contain;
+    width: auto;
+	z-index: 2;
+}
+
+.best-gallery {
+    justify-content: center;
+}
+
+/* Make it exactly 3 per row on larger screens */
 @media (min-width: 1200px) {
     .best-row .gallery-item {
         flex: 1 1 32%;
@@ -775,15 +806,76 @@ main p {
     }
 }
 
-.best-moments-section {
-    margin: 60px 0;
+/* Better spacing on very large screens */
+@media (min-width: 1400px) {
+    .featured-item {
+        max-width: 1000px;
+    }
 }
 
-.section-title {
-    color: #333;
-    font-size: 1.8em;
-    margin: 20px 0 40px 0;
-    text-align: center;
+/* ==================== MOBILE - BEST MOMENTS ==================== */
+
+@media (max-width: 900px) {
+
+    /* Zero out row margins - we'll control spacing with items */
+    .featured-row,
+    .best-row {
+        display: block !important;
+        margin: 0 !important;
+    }
+
+    /* Best rows */
+    .best-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+    }
+
+    /* Narrower Best images */
+    .best-row .gallery-item {
+        flex: 0 0 88%;
+        margin: 0 auto 28px auto;     /* ← This centers it */
+        max-width: 88%;
+    }
+
+    /* Featured items stay full width */
+    .featured-item {
+        border: 6px solid #222 !important;
+        border-radius: 16px !important;
+		box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 14px !important;
+    }
+
+    /* Hide decorations */
+    .decor-left,
+    .decor-right {
+        display: none;
+    }
+
+    /* All images full natural height */
+    .gallery-image,
+    .featured-image {
+        height: auto !important;
+        max-height: none !important;
+        object-fit: contain !important;
+        width: 100% !important;
+    }
+
+    /* Extra top padding at the very beginning */
+    .best-row:first-child,
+    .featured-row:first-child {
+        margin-top: 20px;
+    }
+
+    /* Extra bottom padding at the very end */
+    .best-row:last-child,
+    .featured-row:last-child {
+        margin-bottom: 60px;
+    }
+
 }
 
 /* ==================== PAGINATION ==================== */

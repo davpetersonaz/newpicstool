@@ -431,14 +431,13 @@ router.delete('/api/photo/:id', async (req, res) => {
 			return res.status(404).json({ success: false, message: 'Photo not found' });
 		}
 
-		// Delete from Vercel Blob if it's a URL
+		// Delete from Vercel Blob
 		if (photo.image && photo.image.startsWith('http')) {
 			try {
 				const { del } = await import('@vercel/blob');
 				await del(photo.image, {
 					token: process.env.BLOB_READ_WRITE_TOKEN
 				});
-				// console.warn(`🗑️ Deleted from Vercel Blob: ${photo.image}`);
 			} catch (blobErr) {
 				console.warn('Vercel Blob delete warning:', blobErr.message);
 			}

@@ -56,16 +56,14 @@
 
 		<div class="gallery" id="gallery-container">
 
-			<!-- BEST MOMENTS + FEATURED INTERLEAVED -->
+			<!-- ====================== BEST MOMENTS LAYOUT ====================== -->
 			<% if (featuredImages.length > 0 || bestImages.length > 0) { %>
-				
-				<% 
+				<%
 				const maxBestPerRow = 3;
 				let bestIndex = 0;
+
+				featuredImages.forEach((featured, i) => {
 				%>
-
-				<% featuredImages.forEach((featured, i) => { %>
-
 					<!-- Best Moments row BEFORE this featured (except first) -->
 					<% if (i > 0 && bestIndex < bestImages.length) { %>
 						<div class="best-row">
@@ -99,7 +97,7 @@
 					<div class="featured-row">
 						<div class="decor-left"></div>
 						<div class="gallery-item featured-item" data-id="<%= featured.id %>">
-							<img src="<%= featured.src %>" alt="<%= featured.caption %>" class="gallery-image featured-image">
+							<img src="<%= featured.src %>" alt="<%= featured.caption %>" class="featured-image" loading="lazy">
 							<div class="caption"><%= featured.caption || 'Featured Memory' %></div>
 							<% if (isAdmin) { %>
 								<div class="admin-controls">
@@ -119,7 +117,7 @@
 						<div class="decor-right"></div>
 					</div>
 
-				<% }) %>
+				<% }); // end forEach %>
 
 				<!-- Remaining Best Moments after last Featured -->
 				<% if (bestIndex < bestImages.length) { %>
@@ -133,7 +131,16 @@
 								</div>
 								<% if (isAdmin) { %>
 									<div class="admin-controls">
-										<!-- checkboxes -->
+						                <label class="feature-label">
+						                    <input type="checkbox" <%= image.home ? 'checked' : '' %> onchange="toggleHome(this, <%= image.id %>)"> Home
+						                </label>
+						                <label class="feature-label">
+						                    <input type="checkbox" <%= image.bestMoment ? 'checked' : '' %> onchange="toggleBest(this, <%= image.id %>)"> Best
+						                </label>
+						                <label class="feature-label">
+						                    <input type="checkbox" <%= image.featured ? 'checked' : '' %> onchange="toggleFeature(this, <%= image.id %>)"> Featured
+						                </label>
+						                <button class="delete-overlay" onclick="deletePhoto(this)" data-id="<%= image.id %>">🗑️</button>
 									</div>
 								<% } %>
 							</div>
