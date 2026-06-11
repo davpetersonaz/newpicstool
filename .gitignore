@@ -30,6 +30,7 @@ dist/
 
 # Uploaded images (we don't want to commit user photos)
 public/images/
+public/photos-backup-2026-06-11T17-10-37.json
 
 # Editor / IDE
 .vscode/

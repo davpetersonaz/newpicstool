@@ -25,21 +25,6 @@ router.use(isAuthenticated);
 
 // ====================== HELPERS ======================
 
-async function uploadToBlob(buffer, originalName, hash) {
-	const { put } = await import('@vercel/blob');
-    
-	const ext = path.extname(originalName).toLowerCase();
-	const pathname = `images/${hash.slice(0, 12)}${ext}`;
-
-	const blob = await put(pathname, buffer, {
-		access: 'public',
-		addRandomSuffix: false,
-		contentType: `image/${ext.slice(1) || 'jpeg'}`,
-	});
-
-	return blob.url; // Full public URL (e.g. https://...vercel-storage.com/...)
-}
-
 async function updateEnvSlug(newSlug) {
 	try {
 		const envPath = path.join(process.cwd(), '.env');
@@ -106,7 +91,7 @@ router.get('/photos', async (req, res) => {
 	}
 });
 
-// ====================== UPLOAD PHOTOS (Vercel Blob) ======================
+// ====================== UPLOAD PHOTOS (Cloudflare R2) ======================
 router.post('/photos/upload', (req, res, next) => {
 	upload(req, res, (err) => {
 		if (err) {
@@ -140,8 +125,8 @@ router.post('/photos/upload', (req, res, next) => {
 			// Get image dimensions
 			const metadata = await sharp(file.buffer).metadata();
 
-			// Upload to Vercel Blob
-			const imageUrl = await uploadToBlob(file.buffer, file.originalname, hash);
+			// Upload to Cloudflare R2
+			const imageUrl = await uploadToR2(file.buffer, file.originalname, hash, siteSlug);
 
 			const baseName = path.basename(file.originalname, path.extname(file.originalname));
 
@@ -228,7 +213,7 @@ router.post('/photos/upload', (req, res, next) => {
 	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
 });
 
-// ====================== DELETE PHOTO ======================
+// ====================== DELETE PHOTO (Cloudflare R2) ======================
 router.post('/photos/delete/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const siteSlug = process.env.SITE_SLUG || 'slug';
@@ -241,15 +226,13 @@ router.post('/photos/delete/:id', async (req, res) => {
 			return res.status(404).send('Photo not found');
 		}
 
-		// Delete from Vercel Blob if it's a URL
+		// Delete from Cloudflare R2
 		if (photo.image && photo.image.startsWith('http')) {
 			try {
-				const { del } = await import('@vercel/blob');
-				await del(photo.image, {
-					token: process.env.BLOB_READ_WRITE_TOKEN
-				});
-			} catch (blobErr) {
-				console.warn('Vercel Blob delete warning:', blobErr.message);
+				await deleteFromR2(photo.image);
+			} catch (r2Err) {
+				console.warn('R2 delete warning:', r2Err.message);
+				// Don't fail the whole delete if R2 fails
 			}
 		} 
 
@@ -539,5 +522,91 @@ router.post('/update', async (req, res) => {
 		res.status(500).send('Error saving site settings');
 	}
 });
+
+// ====================== R2 HELPERS ======================
+
+async function uploadToR2(buffer, originalName, hash, siteSlug) {
+	const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+	let finalBuffer = buffer;
+	let contentType = 'image/jpeg';
+	const ext = path.extname(originalName).toLowerCase();
+	try {
+		const sharp = (await import('sharp')).default;
+		let pipeline = sharp(buffer)
+			.rotate()                    // Auto-fix orientation from phones
+			.resize(2500, 2500, {        // Resize ANY image > 2500px
+				fit: 'inside',
+				withoutEnlargement: true
+			});
+
+		// Optimize if > 3MB or common large formats
+		if (buffer.length > 3 * 1024 * 1024 || ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+			pipeline = pipeline.jpeg({
+				quality: 82,             // Good quality / size balance
+				mozjpeg: true
+			});
+			contentType = 'image/jpeg';
+		}
+
+		finalBuffer = await pipeline.toBuffer();
+		if (finalBuffer.length !== buffer.length) {
+			console.warn(`✅ Optimized ${originalName}: ${Math.round(buffer.length/1024)}KB → ${Math.round(finalBuffer.length/1024)}KB`);
+		}
+	} catch (err) {
+		console.warn('Image optimization skipped for', originalName, err.message);
+		// Fall back to original buffer if Sharp fails
+	}
+
+	// ====================== Upload to R2 ======================
+	const client = new S3Client({
+		region: 'auto',
+		endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+		credentials: {
+			accessKeyId: process.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+		},
+	});
+	const key = `${siteSlug}/images/${hash.slice(0, 12)}${ext}`;
+	await client.send(new PutObjectCommand({
+		Bucket: process.env.R2_BUCKET_NAME,
+		Key: key,
+		Body: finalBuffer,
+		ContentType: contentType,
+	}));
+
+	// Return public URL
+	return `${process.env.R2_PUBLIC_DOMAIN}/${key}`;
+}
+
+async function deleteFromR2(imageUrl) {
+	const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+	const { URL } = await import('url');
+	const client = new S3Client({
+		region: 'auto',
+		endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+		credentials: {
+			accessKeyId: process.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+		},
+	});
+
+	// parse URL
+	let key;
+	try {
+		const url = new URL(imageUrl);
+		key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+	} catch (e) {
+		console.warn('Invalid image URL for deletion:', imageUrl, '::', e);
+		return; // can't parse, skip deletion
+	}
+	await client.send(new DeleteObjectCommand({
+		Bucket: process.env.R2_BUCKET_NAME,
+		Key: key,
+	}));
+	// console.log(`🗑️ Deleted from R2: ${key}`);
+}
+
+// Export helpers so other files can use them
+export { uploadToR2, deleteFromR2 };
 
 export default router;

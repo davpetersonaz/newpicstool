@@ -56,7 +56,10 @@ app.use('/admin', adminRoutes); // protected admin dashboard
 
 // 404
 app.use((req, res) => {
-	res.status(404).render('404', { title: 'Page Not Found' });
+	res.status(404).render('404', { 
+		title: 'Page Not Found',
+		headerTitle: 'Memorial Site' 
+	});
 });
 
 // Error handler - improved to catch EJS rendering errors

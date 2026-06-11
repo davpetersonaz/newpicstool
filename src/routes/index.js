@@ -1,6 +1,8 @@
 //src/routes/index.js
 import express from 'express';
 
+import { deleteFromR2 } from './admin.js';
+
 const router = express.Router();
 
 // Global constants
@@ -431,15 +433,12 @@ router.delete('/api/photo/:id', async (req, res) => {
 			return res.status(404).json({ success: false, message: 'Photo not found' });
 		}
 
-		// Delete from Vercel Blob
+		// Delete from R2
 		if (photo.image && photo.image.startsWith('http')) {
 			try {
-				const { del } = await import('@vercel/blob');
-				await del(photo.image, {
-					token: process.env.BLOB_READ_WRITE_TOKEN
-				});
-			} catch (blobErr) {
-				console.warn('Vercel Blob delete warning:', blobErr.message);
+				await deleteFromR2(photo.image);
+			} catch (r2Err) {
+				console.warn('R2 delete warning:', r2Err.message);
 			}
 		} 
 
