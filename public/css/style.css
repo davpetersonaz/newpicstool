@@ -548,6 +548,28 @@ p {
     background-color: #e0e0e0;
 }
 
+.admin-table th:nth-child(2),   /* Original Filename */
+.admin-table td:nth-child(2) {
+    min-width: 240px;
+    width: 25%;
+}
+
+.admin-table th:nth-child(7),
+.admin-table th:nth-child(8),
+.admin-table th:nth-child(9),
+.admin-table td:nth-child(7),
+.admin-table td:nth-child(8),
+.admin-table td:nth-child(9) {
+    text-align: center;
+    width: 50px;
+}
+
+.admin-table th:last-child,
+.admin-table td:last-child {
+    text-align: center;
+    width: 90px;
+}
+
 /* ============= ADMIN UPLOAD DROP ZONE ============ */
 
 .drop-zone {

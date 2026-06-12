@@ -63,7 +63,7 @@
 			<thead>
 				<tr>
 					<th>Thumbnail</th>
-					<th onclick="sortTable(1)" class="sortable">Original Filename</th>
+		            <th onclick="sortTable(1)" class="sortable" style="width: 25%;">Original Filename</th>
 					<th onclick="sortTable(2)" class="sortable" 
 						title="Date the photo was taken&#10;&#10;(e) = from EXIF data&#10;(f) = derived from filename&#10;(m) = manually entered"
 					>
@@ -72,59 +72,68 @@
 					<th onclick="sortTable(3)" class="sortable">Added</th>
 					<th>Dimensions</th>
 					<th onclick="sortTable(5)" class="sortable">Caption</th>
-					<th onclick="sortTable(6)" class="sortable">Home</th>
-					<th onclick="sortTable(7)" class="sortable">Best</th>
-					<th onclick="sortTable(8)" class="sortable">Feature</th>
-					<th>Actions</th>
+				    <th onclick="sortTable(6)" class="sortable" title="Home" style="width: 50px;">H</th>
+				    <th onclick="sortTable(7)" class="sortable" title="Best" style="width: 50px;">B</th>
+				    <th onclick="sortTable(8)" class="sortable" title="Feature" style="width: 50px;">F</th>
+				    <th style="width: 90px;">Actions</th>
 				</tr>
 			</thead>
 			<tbody id="tableBody">
 				<% photos.forEach(photo => { %>
 					<tr>
+						<!-- Thumbnail -->
 						<td>
 							<img src="<%= photo.image %>" 
 								class="photo-thumb" 
 								loading="lazy"
 								alt="<%= photo.originalFilename ? photo.originalFilename.replace(/\.[^/.]+$/, '') : 'Photo' %>">
 						</td>
+		                <!-- Original Filename - wider -->
 						<td class="truncated" 
 							title="<%= photo.originalFilename %>"
 							data-full-caption="<%= photo.originalFilename %>"
-						>
+		                    style="max-width: 320px;">
 							<%= photo.originalFilename %>
 						</td>
+		                <!-- Taken Date - full hover info -->
 						<td class="taken-cell" data-id="<%= photo.id %>">
 							<% if (photo.takenAt) { %>
-								<span class="taken-date"><%= photo.takenAt.toISOString().split('T')[0] %></span>
-								<% if (photo.takenAtSource) { %>
-									<small class="taken-source" 
-										title="<%= 
-											photo.takenAtSource === 'exif' ? 'Extracted from photo EXIF metadata' : 
-											photo.takenAtSource === 'filename' ? 'Derived from the original filename' : 
-											photo.takenAtSource === 'manual' ? 'Manually entered by admin' : 
-											'Date source unknown' 
-										%>"
-									>
-										(<%= 
-											photo.takenAtSource === 'exif' ? 'e' : 
-											photo.takenAtSource === 'filename' ? 'f' : 
-											photo.takenAtSource === 'manual' ? 'm' : 
-											photo.takenAtSource 
-										%>)
-									</small>
-								<% } %>
+				                <span class="taken-date" 
+									title="<%= photo.takenAt.toISOString().split('T')[0] %> (<%= 
+									photo.takenAtSource === 'exif' ? 'e' : 
+									photo.takenAtSource === 'filename' ? 'f' : 
+									photo.takenAtSource === 'manual' ? 'm' : 
+									photo.takenAtSource %>)"
+								>
+									<%= photo.takenAt.toISOString().split('T')[0] %>
+				                    <% if (photo.takenAtSource) { %>
+				                        <small class="taken-source">
+				                            (<%= photo.takenAtSource === 'exif' ? 'e' : 
+				                                photo.takenAtSource === 'filename' ? 'f' : 
+				                                photo.takenAtSource === 'manual' ? 'm' : 
+				                                photo.takenAtSource %>)
+										</small>
+									<% } %>
+								</span>
 							<% } else { %>
-								<span class="taken-date">—</span>
+                        		<span class="taken-date" title="No date available">—</span>
 							<% } %>
 						</td>
-						<td><%= photo.createdAt.toISOString().split('T')[0] %></td>
-						<td><%= photo.width %> × <%= photo.height %></td>
+						<!-- Added Date -->
+						<td title="<%= photo.createdAt.toISOString().split('T')[0] %>">
+							<%= photo.createdAt.toISOString().split('T')[0] %>
+						</td>
+						<!-- Dimensions -->
+						<td><%= photo.width %>×<%= photo.height %></td>
+						<!-- Caption -->
 						<td class="truncated" 
 							title="<%= photo.caption || '' %>"
 							data-full-caption="<%= photo.caption || '' %>"
+							style="max-width: 220px;"
 						>
-							<%= photo.caption ? photo.caption.substring(0, 30) + (photo.caption.length > 30 ? '...' : '') : '—' %>
+							<%= photo.caption ? photo.caption.substring(0, 35) + (photo.caption.length > 35 ? '...' : '') : '—' %>
 						</td>
+						<!-- Filters -->
 						<td>
 							<input type="checkbox" <%= photo.home ? 'checked' : '' %> 
 								onchange="toggleHome(this, <%= photo.id %>)">
@@ -137,6 +146,7 @@
 							<input type="checkbox" <%= photo.featured ? 'checked' : '' %> 
 								onchange="toggleFeature(this, <%= photo.id %>)">
 						</td>
+						<!-- Submit -->
 						<td>
 							<form method="POST" action="/admin/photos/delete/<%= photo.id %>" 
 								onsubmit="return confirm('Delete this photo permanently?')"

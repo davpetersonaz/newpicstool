@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Global constants
 const SITE_SLUG = process.env.SITE_SLUG || 'slug';
-const PAGE_SIZE = 32;   // Adjust as needed
+const PAGE_SIZE = 50;   // Adjust as needed
 
 // Helper function to shuffle array (Fisher-Yates)
 function shuffleArray(array) {
