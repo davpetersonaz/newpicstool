@@ -67,63 +67,48 @@
 		<div class="admin-card">
 			<h2>Existing Videos (<%= videos ? videos.length : 0 %>)</h2>
 			<% if (videos && videos.length > 0) { %>
-				<table class="admin-table">
-					<thead>
-						<tr>
-							<th>Preview</th>
-							<th>Title</th>
-							<th>Description</th>
-							<th>Taken</th>
-		                    <th>Best Moment</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						<div class="video-grid" id="video-grid">
-							<% videos.forEach(video => { %>
-								<div class="video-card" data-id="<%= video.id %>">
-									<div class="video-wrapper">
-										<img src="<%= video.thumbnail %>" class="video-thumb" loading="lazy" alt="<%= video.title %>">
-									</div>
-									<div class="video-info">
-										<h3><%= video.title %></h3>
-										<% if (video.description) { %>
-											<p class="video-description">
-												<%= video.description.substring(0, 140) + (video.description.length > 140 ? '...' : '') %>
-											</p>
-										<% } %>
-										<p><strong>Taken:</strong> <%= video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—' %></p>
-									</div>
-
-									<% if (isAdmin) { %>
-                        				<div class="admin-controls">
-											<label>
-												<input type="checkbox" <%= video.bestMoment ? 'checked' : '' %> 
-													onchange="toggleBestMoment(<%= video.id %>, this.checked)">
-												Best Moment
-											</label>
-											<button data-id="<%= video.id %>" class="delete-btn"
-													onclick="deleteVideo(this)">Delete</button>
-										</div>
-									<% } %>
-								</div>
-							<% }) %>
-						</div>
-
-						<% if (allVideos && allVideos.length > videos.length) { %>
-							<div style="text-align: center; margin: 50px 0 30px;">
-								<button id="load-more-videos" class="btn btn-primary">
-									Load More Videos (<%= allVideos.length - videos.length %> remaining)
-								</button>
+				<div class="video-grid" id="video-grid">
+					<% videos.forEach(video => { %>
+						<div class="video-card" data-id="<%= video.id %>">
+							<div class="video-wrapper">
+								<img src="<%= video.thumbnail %>" class="video-thumb" loading="lazy" alt="<%= video.title %>">
 							</div>
-						<% } %>
-					</tbody>
-				</table>
+							<div class="video-info">
+								<h3><%= video.title %></h3>
+								<% if (video.description) { %>
+									<p class="video-description">
+										<%= video.description.substring(0, 140) + (video.description.length > 140 ? '...' : '') %>
+									</p>
+								<% } %>
+								<p><strong>Taken:</strong> <%= video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—' %></p>
+							</div>
+
+							<% if (isAdmin) { %>
+								<div class="admin-controls">
+									<label>
+										<input type="checkbox" <%= video.bestMoment ? 'checked' : '' %> 
+											onchange="toggleBestMoment(<%= video.id %>, this.checked)">
+										Best Moment
+									</label>
+									<button data-id="<%= video.id %>" class="delete-btn"
+											onclick="deleteVideo(this)">Delete</button>
+								</div>
+							<% } %>
+						</div>
+					<% }) %>
+				</div>
+
+				<% if (allVideos && allVideos.length > videos.length) { %>
+					<div style="text-align: center; margin: 50px 0 30px;">
+						<button id="load-more-videos" class="btn btn-primary">
+							Load More Videos (<%= allVideos.length - videos.length %> remaining)
+						</button>
+					</div>
+				<% } %>
 			<% } else { %>
 				<p>No videos yet.</p>
 			<% } %>
 		</div>
-	</div>
 
 	<%- include('../partials/footer') %>
 
