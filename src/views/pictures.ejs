@@ -213,7 +213,7 @@ isAdmin: !!isAdmin
 		// Parse data safely
 		let allPhotos = [];
 		let displayedCount = 0;
-		let pageSize = 30;
+		let pageSize = 32;
 		let isAdminUser = false;
 
 		try {
@@ -223,7 +223,7 @@ isAdmin: !!isAdmin
 
 			allPhotos = parsed.allPhotos || [];
 			displayedCount = parsed.initialCount || 0;
-			pageSize = parsed.pageSize || 30;
+			pageSize = parsed.pageSize || 32;
 			isAdminUser = !!parsed.isAdmin;
 			console.warn('Gallery data loaded:', allPhotos.length, 'photos');
 		} catch (e) {

@@ -21,36 +21,56 @@ function shuffleArray(array) {
 
 // ====================== HOME ======================
 router.get('/', async (req, res) => {
-	console.warn('✅ Home route hit');   // ← Add this line
+	const defaultConfig = {
+		preTitle: 'Welcome to a celebration of the life and times of',
+		title: 'Memorial Site',
+		postTitle: 'R.I.P.',
+		bio: 'In loving memory'
+	};
 
 	try {
-		const config = await req.prisma.siteConfig.findFirst({
+		let config = await req.prisma.siteConfig.findFirst({
 			where: { siteSlug: SITE_SLUG }
-		}) || {
-			preTitle: 'Welcome to a celebration of the life and times of',
-			title: 'Memorial Site',
-			postTitle: 'R.I.P.',
-			bio: 'In loving memory'
-		};
+		});
+
+		// Create default config if it doesn't exist yet
+		if (!config) {
+			config = await req.prisma.siteConfig.create({
+				data: {
+					siteSlug: SITE_SLUG,
+					...defaultConfig
+				}
+			});
+		}
+
+		// Get all home photos
+		const homePhotos = await req.prisma.photo.findMany({
+			where: { home: true, siteSlug: SITE_SLUG }
+		});
+
+		// Randomly select one home photo (if any)
+		let homeImage = null;
+		if (homePhotos.length > 0) {
+			// Pick a random one
+			const randomIndex = Math.floor(Math.random() * homePhotos.length);
+			const selected = homePhotos[randomIndex];
+			homeImage = {
+				src: selected.image,
+				alt: selected.caption || config.title
+			};
+		}
 
 		res.render('index', {
 			preTitle: config.preTitle,
-			headerTitle: config.title || 'Memorial Site',
+			headerTitle: config?.title || 'Memorial Site',
 			title: config.title,
 			postTitle: config.postTitle,
 			bio: config.bio,
-			homeImage: null
+			homeImage
 		});
 	} catch (error) {
 		console.error('Home route error:', error);
-		res.render('index', {
-			preTitle: 'Welcome',
-			headerTitle: 'Memorial Site',
-			title: 'Memorial Site',
-			postTitle: 'R.I.P.',
-			bio: 'In loving memory',
-			homeImage: null
-		});
+		res.render('index', { ...defaultConfig, homeImage: null });
 	}
 });
 
