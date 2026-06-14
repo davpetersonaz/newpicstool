@@ -79,29 +79,44 @@
 						</tr>
 					</thead>
 					<tbody>
-						<% videos.forEach(video => { %>
-							<tr>
-								<td><img src="<%= video.thumbnail %>" class="video-thumb" loading="lazy" alt="Video thumbnail"></td>
-								<td><%= video.title %></td>
-								<td style="max-width: 420px;">
-									<%= video.description 
-										? video.description.substring(0, 140) + (video.description.length > 140 ? '...' : '') 
-										: '—' 
-									%>
-								</td>
-								<td><%= video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—' %></td>
-				                <td style="text-align: center;">
-				                    <input type="checkbox" 
-				                           <%= video.bestMoment ? 'checked' : '' %> 
-				                           onchange="toggleBestMoment(<%= video.id %>, this.checked)">
-				                </td>
-								<td>
-									<button data-id="<%= video.id %>" 
-										data-title="<%= video.title.replace(/"/g, '&quot;') %>"
-										class="delete-btn">Delete</button>
-								</td>
-							</tr>
-						<% }) %>
+						<div class="video-grid" id="video-grid">
+							<% videos.forEach(video => { %>
+								<div class="video-card" data-id="<%= video.id %>">
+									<div class="video-wrapper">
+										<img src="<%= video.thumbnail %>" class="video-thumb" loading="lazy" alt="<%= video.title %>">
+									</div>
+									<div class="video-info">
+										<h3><%= video.title %></h3>
+										<% if (video.description) { %>
+											<p class="video-description">
+												<%= video.description.substring(0, 140) + (video.description.length > 140 ? '...' : '') %>
+											</p>
+										<% } %>
+										<p><strong>Taken:</strong> <%= video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—' %></p>
+									</div>
+
+									<% if (isAdmin) { %>
+                        				<div class="admin-controls">
+											<label>
+												<input type="checkbox" <%= video.bestMoment ? 'checked' : '' %> 
+													onchange="toggleBestMoment(<%= video.id %>, this.checked)">
+												Best Moment
+											</label>
+											<button data-id="<%= video.id %>" class="delete-btn"
+													onclick="deleteVideo(this)">Delete</button>
+										</div>
+									<% } %>
+								</div>
+							<% }) %>
+						</div>
+
+						<% if (allVideos && allVideos.length > videos.length) { %>
+							<div style="text-align: center; margin: 50px 0 30px;">
+								<button id="load-more-videos" class="btn btn-primary">
+									Load More Videos (<%= allVideos.length - videos.length %> remaining)
+								</button>
+							</div>
+						<% } %>
 					</tbody>
 				</table>
 			<% } else { %>
@@ -111,6 +126,13 @@
 	</div>
 
 	<%- include('../partials/footer') %>
+
+	<script id="videos-data" type="application/json">
+		<%= JSON.stringify({
+			allVideos: allVideos || [],
+			initialCount: videos ? videos.length : 0
+		}) %>
+	</script>
 
 	<script>
 		// ====================== VIDEO BEST MOMENT TOGGLE ======================
@@ -133,36 +155,32 @@
 			}
 		}
 
-    	// ====================== INDIVIDUAL VIDEO DELETE ======================
-		document.addEventListener('click', async function(e) {
-			if (e.target.classList.contains('delete-btn')) {
-				const videoId = e.target.dataset.id;
-				const title = e.target.dataset.title || 'this video';
-				if (!confirm(`Delete "${title}" permanently?`)){ return; }
-				try {
-					const response = await fetch(`/admin/videos/delete/${videoId}`, { method: 'DELETE' });
-	            	if (handleAuthError(response)){ return; }
-					if (response.ok) {
-						location.reload();   // refresh to show updated list
-					} else {
-						alert('Failed to delete video');
-					}
-				} catch (err) {
-					console.error(err);
-					alert('Error deleting video');
+		// ====================== DELETE VIDEO ======================
+		async function deleteVideo(btn) {
+		    const videoId = btn.dataset.id;
+		    const title = btn.closest('.video-card')?.querySelector('h3')?.textContent || 'this video';
+		    
+		    if (!confirm(`Delete "${title}" permanently?`)){ return; }
+			try {
+				const response = await fetch(`/admin/videos/delete/${videoId}`, { method: 'DELETE' });
+            	if (handleAuthError(response)){ return; }
+				if (response.ok) {
+					location.reload();   // refresh to show updated list
+				} else {
+					alert('Failed to delete video');
 				}
+			} catch (err) {
+				console.error(err);
+				alert('Error deleting video');
 			}
-		});
+		}
 
     	// ====================== DELETE ALL VIDEOS ======================
 		async function deleteAllVideos() {
 			const dangerCard = document.querySelector('.danger-zone');
 			const videoCount = dangerCard ? parseInt(dangerCard.dataset.videoCount) || 0 : 0;
-			if (videoCount === 0) {
-				alert("There are no videos to delete.");
-				return;
-			}
-			if (!confirm(`⚠️ WARNING: This will permanently delete ALL ${videoCount} videos for this site.`)) { return; }
+        if (videoCount === 0){ return alert("There are no videos to delete."); }
+        if (!confirm(`⚠️ WARNING: This will permanently delete ALL ${videoCount} videos.`)) return;
 			try {
 				const response = await fetch('/admin/videos/delete-all', { method: 'DELETE' });
             	if (handleAuthError(response)){ return; }
@@ -179,10 +197,70 @@
 		}
 
     	// ====================== IMPORT BUTTON ======================
-		document.getElementById('import-form').addEventListener('submit', function() {
+    	document.getElementById('import-form')?.addEventListener('submit', function() {
 			const btn = document.getElementById('import-btn');
-			btn.textContent = 'Importing... Please wait';
+		    if (btn) {
+				btn.textContent = 'Importing... Please wait';
+				btn.disabled = true;
+		    }
+		});
+
+    	// ====================== LOAD MORE VIDEOS ======================
+		let allVideosData = [];
+		let displayedCount = 0;
+    	let isAdminUser = false;
+		try {
+		    const data = JSON.parse(document.getElementById('videos-data').textContent);
+		    allVideosData = data.allVideos || [];
+		    displayedCount = data.initialCount || 0;
+	        isAdminUser = !!data.isAdmin;
+		} catch(e) {
+	        console.error("Failed to parse videos data");
+		}
+		document.getElementById('load-more-videos')?.addEventListener('click', function() {
+			const btn = this;
+			btn.textContent = 'Loading...';
 			btn.disabled = true;
+			const nextBatch = allVideosData.slice(displayedCount, displayedCount + 8);
+			const grid = document.getElementById('video-grid');
+			nextBatch.forEach(video => {
+				const card = document.createElement('div');
+				card.className = 'video-card';
+				card.dataset.id = video.id;
+
+		        let adminHTML = '';
+		        if (isAdminUser) {
+		            adminHTML = `
+		                <div class="admin-controls">
+		                    <label>
+		                        <input type="checkbox" ${video.bestMoment ? 'checked' : ''} 
+		                               onchange="toggleBestMoment(${video.id}, this.checked)">
+		                        Best Moment
+		                    </label>
+		                    <button data-id="${video.id}" class="delete-btn" onclick="deleteVideo(this)">Delete</button>
+		                </div>`;
+		        }
+				card.innerHTML = `
+					<div class="video-wrapper">
+						<img src="${video.thumbnail}" class="video-thumb" loading="lazy" alt="${video.title}">
+					</div>
+					<div class="video-info">
+						<h3>${video.title}</h3>
+						${video.description ? `<p class="video-description">${video.description.substring(0, 140)}${video.description.length > 140 ? '...' : ''}</p>` : ''}
+						<p><strong>Taken:</strong> ${video.takenAt ? video.takenAt.toISOString().split('T')[0] : '—'}</p>
+					</div>
+	                ${adminHTML}
+				`;
+				grid.appendChild(card);
+			});
+
+			displayedCount += nextBatch.length;
+			if (displayedCount >= allVideosData.length) {
+				btn.style.display = 'none';
+			} else {
+				btn.textContent = `Load More Videos (${allVideosData.length - displayedCount} remaining)`;
+				btn.disabled = false;
+			}
 		});
 	</script>
 </body>

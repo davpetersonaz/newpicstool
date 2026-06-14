@@ -313,13 +313,15 @@ router.get('/videos', async (req, res) => {
 	const showBestOnly = req.query.best === 'true';
 	const sort = req.query.sort || 'random';
 
+	// Detect mobile
+	const userAgent = req.headers['user-agent'] || '';
+	const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/.test(userAgent);
+
 	try {
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const baseTitle = config?.title || 'Memorial Site';
 		const whereClause = { siteSlug };
-		if (showBestOnly) {
-			whereClause.bestMoment = true;
-		}
+		if (showBestOnly) { whereClause.bestMoment = true; }
 		let dbVideos = [];
 
 		if (sort === 'chrono') {
@@ -340,7 +342,9 @@ router.get('/videos', async (req, res) => {
 			dbVideos = shuffleArray(dbVideos);
 		}
 
-		const videos = dbVideos.map(v => ({
+		// Limit initial load on mobile
+		const initialLimit = isMobile ? 8 : 20;
+		const videos = dbVideos.slice(0, initialLimit).map(v => ({
 			id: v.id,
 			youtubeId: v.youtubeId,
 			title: v.title,
@@ -357,12 +361,7 @@ router.get('/videos', async (req, res) => {
 
 		// If AJAX sort/filter request
 		if (req.query.sort || req.query.best) {
-			return res.json({
-				success: true,
-				videos,
-				sort,
-				showBestOnly
-			});
+			return res.json({ success: true, videos, sort, showBestOnly, isMobile });
 		}
 
 		// Normal page load
@@ -370,8 +369,10 @@ router.get('/videos', async (req, res) => {
 			headerTitle: baseTitle,
 			title: pageTitle,
 			videos,
+			allVideos: dbVideos,           // for "Load More"
 			sort,
-			showBestOnly: !!showBestOnly
+			showBestOnly: !!showBestOnly,
+			isMobile
 		});
 
 	} catch (err) {
