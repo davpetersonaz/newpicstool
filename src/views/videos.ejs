@@ -8,12 +8,8 @@
 	<link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body data-best-only="<%= showBestOnly ? 'true' : 'false' %>">   <!-- ← Safe here -->
+<body data-best-only="<%= showBestOnly ? 'true' : 'false' %>">
 	<%- include('partials/header') %>
-
-	<script id="video-data" type="application/json">
-		<%- JSON.stringify(videos || []) %>
-	</script>
 
 	<main class="main-container">
 		<div class="section">
@@ -55,24 +51,49 @@
 						</div>
 					<% }) %>
 				</div>
+                <% if (allVideos && allVideos.length > videos.length) { %>
+                    <div style="text-align: center; margin: 50px 0 30px;">
+                        <button id="load-more-videos" class="btn btn-primary">
+                            Load More Videos (<%= allVideos.length - videos.length %> remaining)
+                        </button>
+                    </div>
+                <% } %>
 			<% } else { %>
 				<p>No videos available yet.</p>
 			<% } %>
 		</div>
 	</main>
 
-	<script>
-		let currentVideos = [];
-		let isBestOnly = document.body.getAttribute('data-best-only') === 'true';
-		let currentSort = '<%= sort || "random" %>';
+	<!-- Hidden full data for Load More + initial render -->
+	<script id="video-data" type="application/json">
+	<%- JSON.stringify(allVideos || []) %>
+	</script>
 
-		// Load initial data
+	<script id="initial-videos" type="application/json">
+	<%- JSON.stringify(videos || []) %>
+	</script>
+
+	<script>
+    	// ====================== VIDEO DATA ======================
+        let allVideosData = [];
+    	let displayedCount = 0;
+
+        // Load full dataset
 		try {
-			const rawData = document.getElementById('video-data').textContent.trim();
-			currentVideos = JSON.parse(rawData);
+        const fullData = document.getElementById('video-data').textContent.trim();
+        allVideosData = JSON.parse(fullData);
 		} catch (e) {
-			console.error("Failed to parse video data:", e);
-			currentVideos = [];
+            console.error("Failed to full parse video data", e);
+		}
+
+		// Load initial videos for first render
+		let currentVideos = [];
+		try {
+		    const initialData = document.getElementById('initial-videos').textContent.trim();
+		    currentVideos = JSON.parse(initialData);
+		    displayedCount = currentVideos.length;
+		} catch (e) {
+		    console.error("Failed to parse initial videos");
 		}
 
 		function renderVideos(videoList) {
@@ -96,6 +117,41 @@
 				container.appendChild(card);
 			});
 		}
+
+    	// ====================== LOAD MORE ======================
+        document.getElementById('load-more-videos')?.addEventListener('click', function() {
+            const btn = this;
+            btn.textContent = 'Loading...';
+            btn.disabled = true;
+
+            const nextBatch = allVideosData.slice(displayedCount, displayedCount + 8);
+            const grid = document.getElementById('video-grid');
+
+            nextBatch.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <div class="video-wrapper">
+                        <iframe src="https://www.youtube.com/embed/${video.youtubeId}" 
+                                title="${video.title}" frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen></iframe>
+                    </div>
+                    <div class="video-info">
+                        <p class="video-description">${video.description ? video.description.substring(0, 180) + (video.description.length > 180 ? '...' : '') : ''}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            displayedCount += nextBatch.length;
+            if (displayedCount >= allVideosData.length) {
+                btn.style.display = 'none';
+            } else {
+                btn.textContent = `Load More Videos (${allVideosData.length - displayedCount} remaining)`;
+                btn.disabled = false;
+            }
+        });
 
 		function updateTitles() {
 		    const baseTitle = '<%= headerTitle || "My Boy Dino" %>';
@@ -171,9 +227,7 @@
 
 		// Initial render
 		document.addEventListener('DOMContentLoaded', () => {
-			renderVideos(currentVideos);
-			updateActiveButtons();
-        	updateTitles();
+            renderVideos(currentVideos);
 		});
 	</script>
 
