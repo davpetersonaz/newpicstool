@@ -10,7 +10,7 @@ const SITE_SLUG = process.env.SITE_SLUG || 'slug';
 const DEFAULT_PAGE_SIZE = 50;        // Desktop
 const MOBILE_PAGE_SIZE = 12;         // Pictures on mobile
 const MOBILE_VIDEO_LIMIT = 6;        // Videos on mobile
-const DESKTOP_VIDEO_LIMIT = 25;      // Videos on desktop
+const DESKTOP_VIDEO_LIMIT = 20;      // Videos on desktop
 
 // Helper to detect mobile
 function isMobile(req) {
