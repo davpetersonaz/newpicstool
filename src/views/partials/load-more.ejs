@@ -1,0 +1,8 @@
+<!-- /src/views/partials/load-more.ejs -->
+<% if (allItems && allItems.length > items.length) { %>
+    <div style="text-align: center; margin: 50px 0 40px;">
+        <button id="load-more-btn" class="btn btn-primary">
+            Load More (<%= allItems.length - items.length %> remaining)
+        </button>
+    </div>
+<% } %>

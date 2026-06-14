@@ -187,7 +187,7 @@
 
 		<% if (featuredImages.length === 0 && bestImages.length === 0 && allImages.length > images.length) { %>
 			<div class="load-more-container" style="text-align:center; margin: 60px 0 100px;">
-				<button id="load-more-btn" class="btn btn-primary" onclick="loadMorePhotos()">
+				<button id="load-more-btn" class="btn btn-primary">
 					Load More Photos (<%= allImages.length - images.length %> remaining)
 				</button>
 			</div>
@@ -200,14 +200,14 @@
 		</div>
 	</main>
 
-	<script id="gallery-data" type="application/json">
+<script id="gallery-data" type="application/json">
 <%- JSON.stringify({
-allPhotos: allImages || featuredImages || bestImages || images || [],
-initialCount: images.length || allImages.length,
-pageSize: pageSize || 30,
-isAdmin: !!isAdmin
+    allPhotos: allImages || featuredImages || bestImages || images || [],
+    initialCount: images.length || allImages.length,
+    pageSize: pageSize || 32,
+    isAdmin: !!isAdmin
 }) %>
-	</script>
+</script>
 
 	<script>
 		// Parse data safely
@@ -218,17 +218,14 @@ isAdmin: !!isAdmin
 
 		try {
 			const rawData = document.getElementById('gallery-data').textContent.trim();
-			console.warn('Raw JSON length:', rawData.length); // debug
 			const parsed = JSON.parse(rawData);
 
 			allPhotos = parsed.allPhotos || [];
 			displayedCount = parsed.initialCount || 0;
-			pageSize = parsed.pageSize || 32;
-			isAdminUser = !!parsed.isAdmin;
-			console.warn('Gallery data loaded:', allPhotos.length, 'photos');
+		    pageSize = parsed.pageSize || 32;
+		    isAdminUser = !!parsed.isAdmin;
 		} catch (e) {
 			console.error("Failed to parse gallery data:", e);
-			console.log("Raw data preview:", document.getElementById('gallery-data').textContent.substring(0, 300));
 		}
 
 		// ==================== LOAD MORE ====================
@@ -245,7 +242,7 @@ isAdmin: !!isAdmin
 				item.className = 'gallery-item';
 				item.dataset.id = image.id;
 				item.innerHTML = `
-					<img src="${image.src || image.image}" alt="${image.caption}" loading="lazy" class="gallery-image">
+					<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
 					<div class="caption" onclick="editCaption(this)" title="Click to edit">
 						${image.caption || 'No caption'}
 					</div>
@@ -311,7 +308,7 @@ isAdmin: !!isAdmin
 						item.className = 'gallery-item';
 						item.dataset.id = image.id;
 						item.innerHTML = `
-							<img src="${image.src || image.image}" alt="${image.caption}" loading="lazy" class="gallery-image">
+							<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
 							<div class="caption" onclick="editCaption(this)" title="Click to edit">
 								${image.caption || 'No caption'}
 							</div>
@@ -349,10 +346,7 @@ isAdmin: !!isAdmin
 
 					// Update active sort button
 					document.querySelectorAll('.sort-button').forEach(btn => {
-						const isRandom = newSort === 'random';
-						btn.classList.toggle('active', isRandom 
-							? btn.textContent.toLowerCase().includes('shuffle') || btn.textContent.toLowerCase().includes('random') 
-							: btn.textContent.toLowerCase().includes(newSort));
+	                    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(newSort));
 					});
 
 					// Show/hide Load More button

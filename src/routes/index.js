@@ -7,7 +7,16 @@ const router = express.Router();
 
 // Global constants
 const SITE_SLUG = process.env.SITE_SLUG || 'slug';
-const PAGE_SIZE = 50;   // Adjust as needed
+const DEFAULT_PAGE_SIZE = 50;        // Desktop
+const MOBILE_PAGE_SIZE = 12;         // Pictures on mobile
+const MOBILE_VIDEO_LIMIT = 6;        // Videos on mobile
+const DESKTOP_VIDEO_LIMIT = 25;      // Videos on desktop
+
+// Helper to detect mobile
+function isMobile(req) {
+	const ua = req.headers['user-agent'] || '';
+	return /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/.test(ua);
+}
 
 // Helper function to shuffle array (Fisher-Yates)
 function shuffleArray(array) {
@@ -62,7 +71,7 @@ router.get('/', async (req, res) => {
 
 		res.render('index', {
 			preTitle: config.preTitle,
-			headerTitle: config?.title || 'Memorial Site',
+			headerTitle: config.title || 'Memorial Site',
 			title: config.title,
 			postTitle: config.postTitle,
 			bio: config.bio,
@@ -76,6 +85,8 @@ router.get('/', async (req, res) => {
 
 // ====================== PICTURES ======================
 router.get('/pictures', async (req, res) => {
+	const mobile = isMobile(req);
+	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
 	try {
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
 		const title = config?.title || 'Memorial Gallery';
@@ -118,7 +129,7 @@ router.get('/pictures', async (req, res) => {
 		    bestMoment: photo.bestMoment,
 			featured: photo.featured
 		}));
-		const initialImages = allImages.slice(0, PAGE_SIZE);
+		const initialImages = allImages.slice(0, pageSize);
 
 		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
 		if (req.query.sort) {
@@ -126,10 +137,10 @@ router.get('/pictures', async (req, res) => {
 				success: true,
 				sort,
 				images: initialImages,     // first page only
-				allImages: allImages || [],      // full list for load more
+				allImages,
 				title,
 				isAdmin: !!req.session?.isAdmin,
-				pageSize: PAGE_SIZE
+				pageSize
 			});
 		}
 
@@ -137,14 +148,15 @@ router.get('/pictures', async (req, res) => {
 		res.render('pictures', {
 			headerTitle: config?.title || 'Memorial Site',
 			title,
+		    pageSize,
+		    isMobile: mobile,
 			allImages,
 			images: initialImages,
 			featuredImages: [],
 			bestImages: [],
 			sort,
 			searchQuery: '',
-			isAdmin: !!req.session?.isAdmin,
-			pageSize: PAGE_SIZE
+			isAdmin: !!req.session?.isAdmin
 		});
 	} catch (err) {
 		console.error('Pictures route error:', err);
@@ -156,6 +168,8 @@ router.get('/pictures', async (req, res) => {
 router.get('/search', async (req, res) => {
 	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
 	if (!query){ return res.redirect('/pictures'); }
+	const mobile = isMobile(req);
+	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
 
 	try {
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
@@ -206,7 +220,7 @@ router.get('/search', async (req, res) => {
 		    bestMoment: photo.bestMoment,
 			featured: photo.featured
 		}));
-		const initialImages = allImages.slice(0, PAGE_SIZE);
+		const initialImages = allImages.slice(0, pageSize);
 
 		// JSON response for sorting
 		if (req.query.sort) {
@@ -217,7 +231,8 @@ router.get('/search', async (req, res) => {
 				allImages,
 				title: `${baseTitle} — Search: "${query}"`,
 				isAdmin: !!req.session?.isAdmin,
-				pageSize: PAGE_SIZE
+				pageSize,
+				isMobile: mobile
 			});
 		} 
 
@@ -232,7 +247,8 @@ router.get('/search', async (req, res) => {
 			sort,
 			searchQuery: query,
 			isAdmin: !!req.session?.isAdmin,
-			pageSize: PAGE_SIZE
+			pageSize,
+			isMobile: mobile
 		});
 
 	} catch (err) {
@@ -299,7 +315,8 @@ router.get('/best', async (req, res) => {
 			sort: 'random',
 			searchQuery: '',
 			isAdmin: !!req.session?.isAdmin,
-			pageSize: PAGE_SIZE
+			pageSize: DEFAULT_PAGE_SIZE,
+			isMobile: false
 		});
 	} catch (error) {
 		console.error('Best moments error:', error);
@@ -309,13 +326,11 @@ router.get('/best', async (req, res) => {
 
 // ====================== VIDEOS ======================
 router.get('/videos', async (req, res) => {
+	const mobile = isMobile(req);
+	const initialLimit = mobile ? MOBILE_VIDEO_LIMIT : DESKTOP_VIDEO_LIMIT;
 	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const showBestOnly = req.query.best === 'true';
 	const sort = req.query.sort || 'random';
-
-	// Detect mobile
-	const userAgent = req.headers['user-agent'] || '';
-	const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/.test(userAgent);
 
 	try {
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
@@ -343,7 +358,6 @@ router.get('/videos', async (req, res) => {
 		}
 
 		// Limit initial load on mobile
-		const initialLimit = isMobile ? 8 : 20;
 		const videos = dbVideos.slice(0, initialLimit).map(v => ({
 			id: v.id,
 			youtubeId: v.youtubeId,
@@ -361,7 +375,13 @@ router.get('/videos', async (req, res) => {
 
 		// If AJAX sort/filter request
 		if (req.query.sort || req.query.best) {
-			return res.json({ success: true, videos, sort, showBestOnly, isMobile });
+			return res.json({
+				success: true,
+				videos,
+				sort,
+				showBestOnly,
+				isMobile: mobile
+			});
 		}
 
 		// Normal page load
@@ -369,10 +389,10 @@ router.get('/videos', async (req, res) => {
 			headerTitle: baseTitle,
 			title: pageTitle,
 			videos,
-			allVideos: dbVideos,           // for "Load More"
+			allVideos: dbVideos,           // full list for Load More
 			sort,
 			showBestOnly: !!showBestOnly,
-			isMobile
+			isMobile: mobile
 		});
 
 	} catch (err) {
