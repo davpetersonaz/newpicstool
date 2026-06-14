@@ -65,11 +65,11 @@
 	</main>
 
 	<!-- Hidden full data for Load More + initial render -->
-	<script id="video-data" type="application/json">
+	<script id="video-full-data" type="application/json">
 	<%- JSON.stringify(allVideos || []) %>
 	</script>
 
-	<script id="initial-videos" type="application/json">
+	<script id="video-initial-data" type="application/json">
 	<%- JSON.stringify(videos || []) %>
 	</script>
 
@@ -80,20 +80,20 @@
 
         // Load full dataset
 		try {
-        const fullData = document.getElementById('video-data').textContent.trim();
-        allVideosData = JSON.parse(fullData);
+	        const fullRaw = document.getElementById('video-full-data').textContent.trim();
+    	    allVideosData = JSON.parse(fullRaw);
 		} catch (e) {
-            console.error("Failed to full parse video data", e);
+			console.error("Failed to parse full video data");
 		}
 
-		// Load initial videos for first render
+		// Load initial videos
 		let currentVideos = [];
 		try {
-		    const initialData = document.getElementById('initial-videos').textContent.trim();
-		    currentVideos = JSON.parse(initialData);
-		    displayedCount = currentVideos.length;
+			const initialRaw = document.getElementById('video-initial-data').textContent.trim();
+			currentVideos = JSON.parse(initialRaw);
+			displayedCount = currentVideos.length;
 		} catch (e) {
-		    console.error("Failed to parse initial videos");
+			console.error("Failed to parse initial videos");
 		}
 
 		function renderVideos(videoList) {
