@@ -1,20 +1,11 @@
 // src/middleware/auth.js
-import { PrismaClient } from '@prisma/client';
-import { PrismaSessionStore } from '@quixo3/prisma-session-store';
 import session from 'express-session';
-
-const prisma = new PrismaClient();
 
 const sessionMiddleware = session({
 	secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
 	resave: false,
 	saveUninitialized: false,
 	proxy: true, //important for vercel
-	store: new PrismaSessionStore(prisma, {
-		checkPeriod: 2 * 60 * 1000,        // prune expired every 2 minutes
-		dbRecordIdIsSessionId: true,
-		ttl: 1000 * 60 * 60 * 24 * 7     // 7 days
-	}),
 	cookie: {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === 'production',   // set to true in prod with HTTPS
