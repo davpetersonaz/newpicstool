@@ -10,7 +10,7 @@ const sessionMiddleware = session({
 		httpOnly: true,
 		secure: process.env.NODE_ENV === 'production',   // set to true in prod with HTTPS
 		sameSite: 'lax',
-		maxAge: 1000 * 60 * 60 * 24 * 7   // 7 days
+		maxAge: 1000 * 60 * 60 * 24 * 30   // 30 days
 	}
 });
 
