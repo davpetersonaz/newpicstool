@@ -68,12 +68,15 @@ app.use((err, req, res, next) => {
 	console.error('URL:', req.url);
 	console.error(err.stack || err);
 
-	// Send detailed error to browser
-	res.status(500).send(`
-        <h1 style="color:red">Server Error</h1>
-        <pre>${err.stack || err.message}</pre>
-        <p><a href="/">Go Home</a></p>
-    `);
+	// Prevent "headers already sent" error
+	if (res.headersSent) {
+		return next(err);
+	}
+
+	res.status(500).render('404', { 
+		title: 'Server Error',
+		headerTitle: 'Memorial Site' 
+	});
 });
 
 // ==================== LOCAL DEVELOPMENT + VERCEL ====================
