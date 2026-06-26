@@ -29,6 +29,87 @@
     </nav>
 </header>
 
+<!-- Google Analytics 4 -->
+<% if (googleAnalyticsId) { %>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=<%= googleAnalyticsId %>"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+		gtag('config', '<%= googleAnalyticsId %>');
+	</script>
+
+	<!-- Custom Event Tracking -->
+	<script>
+		// Track important interactions
+		function trackEvent(action, label = '', value = null) {
+			if (typeof gtag !== 'undefined') {
+				gtag('event', action, {
+					event_category: 'engagement',
+					event_label: label,
+					value: value
+				});
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', () => {
+			// Track Load More buttons
+			document.querySelectorAll('#load-more-btn, #load-more-videos').forEach(btn => {
+				btn.addEventListener('click', () => {
+					trackEvent('load_more_click', btn.id || 'unknown');
+				});
+			});
+
+			// Track Best Moments toggle
+			document.querySelectorAll('#best-filter-btn').forEach(btn => {
+				btn.addEventListener('click', () => {
+					trackEvent('best_moments_toggle');
+				});
+			});
+
+			// Track Search form submissions
+			const searchForm = document.querySelector('.search_form');
+			if (searchForm) {
+				searchForm.addEventListener('submit', () => {
+					const query = searchForm.querySelector('input').value.trim();
+					if (query){ trackEvent('search_performed', query); }
+				});
+			}
+
+			// Track navigation clicks
+			document.querySelectorAll('.nav_button, .mobile-menu a').forEach(link => {
+				link.addEventListener('click', () => {
+					trackEvent('navigation_click', link.textContent.trim());
+				});
+			});
+		});
+
+		// Scroll depth tracking
+		let scrollDepth = 0;
+		window.addEventListener('scroll', () => {
+			const scrollPercent = Math.round((window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100);
+			if (scrollPercent > scrollDepth + 25) {
+				scrollDepth = scrollPercent;
+				trackEvent('scroll_depth', scrollPercent + '%');
+			}
+		});
+
+		// Track photo clicks (lightboxes)
+		document.querySelectorAll('.gallery-image').forEach(img => {
+			img.addEventListener('click', () => {
+				trackEvent('photo_view', img.alt || 'unknown');
+			});
+		});
+
+		// Track video plays
+		document.querySelectorAll('iframe').forEach(iframe => {
+			// YouTube tracking is more complex, but you can track embed loads
+			trackEvent('video_embed_loaded');
+		});
+
+	</script>	
+<% } %>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const hamburger = document.getElementById('hamburger');

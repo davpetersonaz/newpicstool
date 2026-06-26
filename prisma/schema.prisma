@@ -10,13 +10,14 @@ datasource db {
 }
 
 model SiteConfig {
-    id        Int      @id @default(autoincrement())
-    siteSlug  String   @unique   // e.g. "dino" or "harley"
-    preTitle  String
-    title     String
-    postTitle String
-    bio       String
-    updatedAt DateTime @updatedAt
+id				Int      @id @default(autoincrement())
+    siteSlug	String   @unique   // e.g. "dino" or "harley"
+    preTitle	String
+    title		String
+    postTitle	String
+	bio			String
+	googleAnalyticsId String?
+    updatedAt	DateTime @updatedAt
 }
 
 model Photo {

@@ -56,6 +56,7 @@ router.get('/', async (req, res) => {
 		res.render('admin/dashboard', {
 			headerTitle: config?.title || 'Memorial Site',
 			title: 'Admin Dashboard',
+			googleAnalyticsId: config.googleAnalyticsId,
 			config,
 			siteSlug,
 			isFirstSetup,
@@ -81,6 +82,7 @@ router.get('/photos', async (req, res) => {
 		res.render('admin/photos', {
 			headerTitle: config?.title || 'Memorial Site',
 			title: 'Manage Photos',
+			googleAnalyticsId: config.googleAnalyticsId,
 			siteSlug,
 			photos,
 			isAdmin: true
@@ -288,6 +290,7 @@ router.get('/videos', async (req, res) => {
 		res.render('admin/videos', {
 			headerTitle: config?.title || 'Memorial Site',
 			title: 'Manage Videos',
+			googleAnalyticsId: config.googleAnalyticsId,
 			siteSlug,
 			videos,
 			isAdmin: true

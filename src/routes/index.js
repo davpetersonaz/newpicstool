@@ -74,6 +74,7 @@ router.get('/', async (req, res) => {
 			headerTitle: config.title || 'Memorial Site',
 			title: config.title,
 			postTitle: config.postTitle,
+			googleAnalyticsId: config.googleAnalyticsId,
 			bio: config.bio,
 			homeImage
 		});
@@ -148,6 +149,7 @@ router.get('/pictures', async (req, res) => {
 		res.render('pictures', {
 			headerTitle: config?.title || 'Memorial Site',
 			title,
+			googleAnalyticsId: config.googleAnalyticsId,
 		    pageSize,
 		    isMobile: mobile,
 			allImages,
@@ -240,6 +242,7 @@ router.get('/search', async (req, res) => {
 		res.render('pictures', {
 			headerTitle: baseTitle,
 			title: `${baseTitle} — Search: "${query}"`,
+			googleAnalyticsId: config.googleAnalyticsId,
 			allImages,
 			images: initialImages,
 			featuredImages: [],
@@ -308,6 +311,7 @@ router.get('/best', async (req, res) => {
 		res.render('pictures', {
 			headerTitle: baseTitle,                    // ← for the header
 			title: `${baseTitle} - Best Moments`,      // ← for the page <h2>
+			googleAnalyticsId: config.googleAnalyticsId,
 			allImages,			// for load-more and sorting
 			images: allImages,	// fallback for normal logic
 			featuredImages,		// special layout
@@ -388,6 +392,7 @@ router.get('/videos', async (req, res) => {
 		res.render('videos', {
 			headerTitle: baseTitle,
 			title: pageTitle,
+			googleAnalyticsId: config.googleAnalyticsId,
 			videos,
 			allVideos: dbVideos,           // full list for Load More
 			sort,
