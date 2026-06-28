@@ -59,7 +59,8 @@ app.use('/admin', adminRoutes); // protected admin dashboard
 app.use((req, res) => {
 	res.status(404).render('404', { 
 		title: 'Page Not Found',
-		headerTitle: 'Memorial Site' 
+		headerTitle: 'Memorial Site',
+		googleAnalyticsId: null
 	});
 });
 
@@ -76,7 +77,8 @@ app.use((err, req, res, next) => {
 
 	res.status(500).render('404', { 
 		title: 'Server Error',
-		headerTitle: 'Memorial Site' 
+		headerTitle: 'Memorial Site',
+		googleAnalyticsId: null
 	});
 });
 
