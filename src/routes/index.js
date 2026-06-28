@@ -80,7 +80,11 @@ router.get('/', async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Home route error:', error);
-		res.render('index', { ...defaultConfig, homeImage: null });
+		res.render('index', { 
+			...defaultConfig, 
+			homeImage: null,
+			googleAnalyticsId: null
+		});
 	}
 });
 
