@@ -350,7 +350,7 @@
 				}
 
 				try {
-					const response = await fetch(`/admin/update-taken/${photoId}`, {
+					const response = await fetch(`/admin/photos/update-taken/${photoId}`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ takenAt: newDateStr || null })
