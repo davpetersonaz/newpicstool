@@ -6,7 +6,6 @@ import { deleteFromR2 } from './admin.js';
 const router = express.Router();
 
 // Global constants
-const SITE_SLUG = process.env.SITE_SLUG || 'slug';
 const DEFAULT_PAGE_SIZE = 50;        // Desktop
 const MOBILE_PAGE_SIZE = 12;         // Pictures on mobile
 const MOBILE_VIDEO_LIMIT = 6;        // Videos on mobile
@@ -30,6 +29,7 @@ function shuffleArray(array) {
 
 // ====================== HOME ======================
 router.get('/', async (req, res) => {
+	const siteSlug = req.siteSlug;
 	const defaultConfig = {
 		preTitle: 'Welcome to a celebration of the life and times of',
 		title: 'Memorial Site',
@@ -39,14 +39,14 @@ router.get('/', async (req, res) => {
 
 	try {
 		let config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: SITE_SLUG }
+			where: { siteSlug: siteSlug }
 		});
 
 		// Create default config if it doesn't exist yet
 		if (!config) {
 			config = await req.prisma.siteConfig.create({
 				data: {
-					siteSlug: SITE_SLUG,
+					siteSlug: siteSlug,
 					...defaultConfig
 				}
 			});
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
 
 		// Get all home photos
 		const homePhotos = await req.prisma.photo.findMany({
-			where: { home: true, siteSlug: SITE_SLUG }
+			where: { home: true, siteSlug: siteSlug }
 		});
 
 		// Randomly select one home photo (if any)
@@ -90,10 +90,11 @@ router.get('/', async (req, res) => {
 
 // ====================== PICTURES ======================
 router.get('/pictures', async (req, res) => {
+	const siteSlug = req.siteSlug;
 	const mobile = isMobile(req);
 	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
 	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: siteSlug } });
 		const title = config?.title || 'Memorial Gallery';
 		const sort = req.query.sort || 'random';
 		let dbPhotos = [];
@@ -101,7 +102,7 @@ router.get('/pictures', async (req, res) => {
 		if (sort === 'chrono') {
 			// Chronological sort: newest takenAt first, missing dates at the very end
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: SITE_SLUG },
+				where: { siteSlug: siteSlug },
 				orderBy: [
 					{ takenAt: { sort: 'desc', nulls: 'last' } },   // newest date first
 					{ createdAt: 'desc' }                           // tie-breaker / fallback
@@ -110,7 +111,7 @@ router.get('/pictures', async (req, res) => {
 		} else if (sort === 'alpha') {
 			// Let Prisma handle alpha sort by caption
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: SITE_SLUG },
+				where: { siteSlug: siteSlug },
 				orderBy: [
 					{ caption: 'asc' },           // alphabetical by caption
 					{ createdAt: 'desc' }         // stable tie-breaker
@@ -119,7 +120,7 @@ router.get('/pictures', async (req, res) => {
 		} else {
 			// Random sort - ALWAYS fetch fresh and shuffle on the server
 			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: SITE_SLUG },
+				where: { siteSlug: siteSlug },
 				orderBy: { createdAt: 'desc' }
 			});
 			dbPhotos = shuffleArray(dbPhotos);
@@ -172,13 +173,14 @@ router.get('/pictures', async (req, res) => {
 
 // ====================== SEARCH ======================
 router.get('/search', async (req, res) => {
+	const siteSlug = req.siteSlug;
 	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
 	if (!query){ return res.redirect('/pictures'); }
 	const mobile = isMobile(req);
 	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
 
 	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: SITE_SLUG } });
+		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: siteSlug } });
 		const baseTitle = config?.title || 'Memorial Gallery';
 		const sort = req.query.sort || 'random';
 		let dbPhotos = [];
@@ -187,7 +189,7 @@ router.get('/search', async (req, res) => {
 			// Chronological search: newest takenAt first
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug: SITE_SLUG,
+					siteSlug: siteSlug,
 					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: [
@@ -198,7 +200,7 @@ router.get('/search', async (req, res) => {
 		} else if (sort === 'alpha') {
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug: SITE_SLUG,
+					siteSlug: siteSlug,
 					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: [
@@ -210,7 +212,7 @@ router.get('/search', async (req, res) => {
 			// Alpha or random: fetch matching captions
 			dbPhotos = await req.prisma.photo.findMany({
 				where: {
-					siteSlug: SITE_SLUG,
+					siteSlug: siteSlug,
 					caption: { contains: query, mode: 'insensitive' }
 				},
 				orderBy: { createdAt: 'desc' }
@@ -266,9 +268,10 @@ router.get('/search', async (req, res) => {
 
 // Best Moments route
 router.get('/best', async (req, res) => {
+	const siteSlug = req.siteSlug;
 	try {
 		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: SITE_SLUG }
+			where: { siteSlug: siteSlug }
 		});
 		const baseTitle = config?.title || 'Memorial Site';
 
@@ -276,7 +279,7 @@ router.get('/best', async (req, res) => {
 		const featuredPhotos = await req.prisma.photo.findMany({
 			where: { 
 				featured: true, 
-				siteSlug: SITE_SLUG 
+				siteSlug: siteSlug 
 			},
 			orderBy: { createdAt: 'desc' }
 		});
@@ -286,7 +289,7 @@ router.get('/best', async (req, res) => {
 			where: { 
 				bestMoment: true,
 				featured: false,        // avoid duplicates
-				siteSlug: SITE_SLUG 
+				siteSlug: siteSlug 
 			},
 			orderBy: { createdAt: 'desc' }
 		});
@@ -336,7 +339,7 @@ router.get('/best', async (req, res) => {
 router.get('/videos', async (req, res) => {
 	const mobile = isMobile(req);
 	const initialLimit = mobile ? MOBILE_VIDEO_LIMIT : DESKTOP_VIDEO_LIMIT;
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	const showBestOnly = req.query.best === 'true';
 	const sort = req.query.sort || 'random';
 
@@ -415,7 +418,7 @@ router.post('/api/photo/:id/caption', async (req, res) => {
 	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
 
 	const photoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	const { caption } = req.body;
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
@@ -438,7 +441,7 @@ router.post('/api/photo/:id/toggle', async (req, res) => {
 	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
 
 	const photoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	const { field } = req.body; // "featured", "bestMoment", or "home"
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
@@ -462,7 +465,7 @@ router.delete('/api/photo/:id', async (req, res) => {
 	if (!req.session?.isAdmin){ return res.status(401).json({ success: false, message: 'Unauthorized' }); }
 
 	const photoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {

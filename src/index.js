@@ -9,6 +9,7 @@ import express from 'express';
 
 // Import middleware and routes
 import sessionMiddleware from './middleware/auth.js';   // session + isAuthenticated
+import siteMiddleware from './middleware/site.js';
 import adminRoutes from './routes/admin.js';
 import authRoutes from './routes/auth.js';
 import indexRoutes from './routes/index.js';
@@ -38,6 +39,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(sessionMiddleware);
+app.use(siteMiddleware);
 
 app.use((req, res, next) => {
 	res.locals.isAdmin = !!req.session?.isAdmin;

@@ -1,6 +1,8 @@
 //src/middleware/site.js
 import { PrismaClient } from '@prisma/client';
 
+import DOMAIN_TO_SLUG from '../config/domains';
+
 const prisma = new PrismaClient();
 
 /**
@@ -9,46 +11,44 @@ const prisma = new PrismaClient();
  */
 export const siteMiddleware = async (req, res, next) => {
 	try {
-		// Get slug from environment (your current approach)
-		let siteSlug = process.env.SITE_SLUG || 'slug';
+		const host = (req.headers.host || '').split(':')[0].toLowerCase(); // strip port
+		let siteSlug = DOMAIN_TO_SLUG[host] || process.env.SITE_SLUG || 'slug';
 
-		// Optional: Allow overriding via query param (useful during development or multi-site testing)
-		if (req.query.siteSlug) {
+		// Optional safety: allow ?siteSlug= override only in non-production
+		if (process.env.NODE_ENV !== 'production' && req.query.siteSlug) {
 			siteSlug = req.query.siteSlug;
 		}
 
 		// Attach to request
 		req.siteSlug = siteSlug;
 
-		// Fetch or create site config
-		let config = await prisma.siteConfig.findUnique({
-			where: { siteSlug }
-		});
-
+		// Fetch or create SiteConfig exactly as you already do
+		let config = await prisma.siteConfig.findUnique({ where: { siteSlug } });
 		if (!config) {
 			config = await prisma.siteConfig.create({
 				data: {
 					siteSlug,
+					preTitle: 'Welcome to a celebration of the life and times of',
 					title: 'Memorial Site',
-					bio: 'In loving memory'
-				}
+					postTitle: 'R.I.P.',
+					bio: 'In loving memory',
+				},
 			});
 			// console.log(`Created new SiteConfig for: ${siteSlug}`);
 		}
 
 		req.siteConfig = config;
+		res.locals.siteConfig = config;   // handy for EJS
+		res.locals.siteSlug = siteSlug;
 
-	} catch (error) {
-		console.error('Site middleware error:', error);
-		// Fallback values so the app doesn't crash
+		next();
+	} catch (err) {
+		console.error('Site middleware error:', err);
 		req.siteSlug = process.env.SITE_SLUG || 'slug';
-		req.siteConfig = {
-			title: 'Memorial Site',
-			bio: 'In loving memory'
-		};
-	}
+		req.siteConfig = { title: 'Memorial Site', bio: 'In loving memory' };
 
-	next();
+		next();
+	}
 };
 
 export default siteMiddleware;

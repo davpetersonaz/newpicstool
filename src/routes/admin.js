@@ -46,7 +46,7 @@ async function updateEnvSlug(newSlug) {
 
 router.get('/', async (req, res) => {
 	try {
-		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const siteSlug = req.siteSlug;
 		let config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const isFirstSetup = !config;
 		if (isFirstSetup) {
@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
 
 router.get('/photos', async (req, res) => {
 	try {
-		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const siteSlug = req.siteSlug;
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const photos = await req.prisma.photo.findMany({
 			where: { siteSlug },
@@ -105,7 +105,7 @@ router.post('/photos/upload', (req, res, next) => {
 		next();
 	});
 }, async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	const files = req.files || [];
 	if (files.length === 0) {
 		return res.status(400).send('No files uploaded');
@@ -224,7 +224,7 @@ router.post('/photos/upload', (req, res, next) => {
 // ====================== DELETE PHOTO (Cloudflare R2) ======================
 router.post('/photos/delete/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 
 	try {
 		const photo = await req.prisma.photo.findUnique({
@@ -258,7 +258,7 @@ router.post('/photos/delete/:id', async (req, res) => {
 router.post('/photos/update-taken/:id', async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const { takenAt } = req.body;
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
@@ -286,7 +286,7 @@ router.post('/photos/update-taken/:id', async (req, res) => {
 // GET /admin/videos
 router.get('/videos', async (req, res) => {
 	try {
-		const siteSlug = process.env.SITE_SLUG || 'slug';
+		const siteSlug = req.siteSlug;
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
 		const videos = await req.prisma.video.findMany({
 			where: { siteSlug },
@@ -311,7 +311,7 @@ router.get('/videos', async (req, res) => {
 // Toggle Best Moment for Video
 router.post('/videos/toggle-best/:id', async (req, res) => {
 	const videoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 
 	try {
 		const video = await req.prisma.video.findUnique({ where: { id: videoId } });
@@ -335,7 +335,7 @@ router.post('/videos/toggle-best/:id', async (req, res) => {
 // POST /admin/videos/import-playlist
 router.post('/videos/import-playlist', async (req, res) => {
 	const { playlistId } = req.body;
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	const apiKey = process.env.YOUTUBE_API_KEY;
 	if (!playlistId){ return res.status(400).send('Playlist ID is required'); }
 	if (!apiKey){ return res.status(500).send('YouTube API key is not configured'); }
@@ -436,7 +436,7 @@ router.post('/videos/import-playlist', async (req, res) => {
 // POST /admin/videos/add
 router.post('/videos/add', async (req, res) => {
 	const { youtubeUrl } = req.body;
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	if (!youtubeUrl){ return res.status(400).send('YouTube URL is required'); }
 
 	try {
@@ -471,7 +471,7 @@ router.post('/videos/add', async (req, res) => {
 
 // DELETE ALL VIDEOS
 router.delete('/videos/delete-all', async (req, res) => {
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 	try {
 		const deleted = await req.prisma.video.deleteMany({ where: { siteSlug } });
 		console.warn(`Deleted ${deleted.count} videos for ${siteSlug}`);
@@ -485,7 +485,7 @@ router.delete('/videos/delete-all', async (req, res) => {
 // DELETE /admin/videos/delete/:id
 router.delete('/videos/delete/:id', async (req, res) => {
 	const videoId = parseInt(req.params.id);
-	const siteSlug = process.env.SITE_SLUG || 'slug';
+	const siteSlug = req.siteSlug;
 
 	try {
 		const video = await req.prisma.video.findUnique({
@@ -509,7 +509,7 @@ router.post('/update', async (req, res) => {
 	if (!title || !bio) {
 		return res.status(400).send('Title and bio are required');
 	}
-	const currentSlug = process.env.SITE_SLUG || 'slug';
+	const currentSlug = req.siteSlug;
 	const finalSlug = submittedSlug.trim() || currentSlug;
 	// Prevent changing slug after initial setup
 	if (finalSlug !== currentSlug && currentSlug !== 'slug') {
@@ -535,7 +535,10 @@ router.post('/update', async (req, res) => {
 		});
 
 		// Only update .env on first setup
-		if (!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug') {
+		if (
+			process.env.NODE_ENV !== 'production' &&
+			(!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug')
+		) {
 			await updateEnvSlug(finalSlug);
 		}
 		res.redirect('/admin?message=Site settings saved successfully.');

@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import express from 'express';
 
 const router = express.Router();
-const SITE_SLUG = process.env.SITE_SLUG || 'slug';
 
 // Admin Login GET
 router.get('/admin/login', (req, res) => {
@@ -15,12 +14,13 @@ router.get('/admin/login', (req, res) => {
 
 // Admin Login POST
 router.post('/admin/login', async (req, res) => {
+	const siteSlug = req.siteSlug;
 	const { username, password } = req.body;
 	try {
 		const admin = await req.prisma.admin.findUnique({
 			where: { 
 				siteSlug_username: {
-					siteSlug: SITE_SLUG,
+					siteSlug: siteSlug,
 					username: username
 				}
 			}
