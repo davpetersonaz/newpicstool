@@ -116,7 +116,6 @@ router.post('/photos/upload', (req, res, next) => {
 	for (const file of files) {
 		try {
 			const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
-
 			// Check for duplicate WITHIN THIS SITE (siteSlug-specific)
 			const existing = await req.prisma.photo.findUnique({
 				where: { 
@@ -382,8 +381,15 @@ router.post('/videos/import-playlist', async (req, res) => {
 					snippet.thumbnails?.medium?.url ||
 					`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 
-				// Check if already exists
-				const existing = await req.prisma.video.findUnique({ where: { youtubeId } });
+				// Check if already exists for THIS site
+				const existing = await req.prisma.video.findUnique({
+					where: { 
+						youtubeId_siteSlug: {   // composite unique for videos
+							youtubeId: youtubeId,
+							siteSlug: siteSlug
+						}
+					}
+				});
 				if (existing) {
 					// Check if anything changed
 					const titleChanged = existing.title !== title;
