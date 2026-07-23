@@ -1,7 +1,7 @@
 //src/middleware/site.js
 import { PrismaClient } from '@prisma/client';
 
-import DOMAIN_TO_SLUG from '../config/domains';
+import DOMAIN_TO_SLUG from '../config/domains.js';
 
 const prisma = new PrismaClient();
 
@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
  * Middleware that attaches siteSlug and siteConfig to req
  * Also creates default SiteConfig if it doesn't exist yet
  */
-export const siteMiddleware = async (req, res, next) => {
+const siteMiddleware = async (req, res, next) => {
 	try {
 		const host = (req.headers.host || '').split(':')[0].toLowerCase(); // strip port
 		let siteSlug = DOMAIN_TO_SLUG[host] || process.env.SITE_SLUG || 'slug';

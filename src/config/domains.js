@@ -8,3 +8,5 @@ const DOMAIN_TO_SLUG = {
 	'localhost': process.env.SITE_SLUG || 'dino',
 	'127.0.0.1': process.env.SITE_SLUG || 'dino',
 };
+
+export default DOMAIN_TO_SLUG;
