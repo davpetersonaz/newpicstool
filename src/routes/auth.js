@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import express from 'express';
 
 const router = express.Router();
+const SITE_SLUG = process.env.SITE_SLUG || 'slug';
 
 // Admin Login GET
 router.get('/admin/login', (req, res) => {
@@ -15,12 +16,15 @@ router.get('/admin/login', (req, res) => {
 // Admin Login POST
 router.post('/admin/login', async (req, res) => {
 	const { username, password } = req.body;
-
 	try {
 		const admin = await req.prisma.admin.findUnique({
-			where: { username }
+			where: { 
+				siteSlug_username: {
+					siteSlug: SITE_SLUG,
+					username: username
+				}
+			}
 		});
-
 		if (!admin || !(await bcrypt.compare(password, admin.password))) {
 			return res.redirect('/admin/login?error=Invalid credentials');
 		}
@@ -28,7 +32,6 @@ router.post('/admin/login', async (req, res) => {
 		// Set session
 		req.session.isAdmin = true;
 		req.session.adminUsername = username;
-
 		res.redirect('/admin');
 	} catch (err) {
 		console.error('Login error:', err);

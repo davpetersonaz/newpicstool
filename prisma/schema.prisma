@@ -1,67 +1,70 @@
 //prisma/schema.prisma
 
 generator client {
-    provider = "prisma-client-js"
+	provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+	provider = "postgresql"
+	url      = env("DATABASE_URL")
 }
 
 model SiteConfig {
 id				Int      @id @default(autoincrement())
-    siteSlug	String   @unique   // e.g. "dino" or "harley"
-    preTitle	String
-    title		String
-    postTitle	String
+	siteSlug	String   @unique   // e.g. "dino" or "harley"
+	preTitle	String
+	title		String
+	postTitle	String
 	bio			String
 	googleAnalyticsId String?
-    updatedAt	DateTime @updatedAt
+	updatedAt	DateTime @updatedAt
 }
 
 model Photo {
-    id               Int      @id @default(autoincrement())
-    siteSlug         String   // ownership - links to SITE_SLUG
-    originalFilename String   // original name from user
-    image            String   // final stored filename in /public/images
-    hash             String   @unique   // SHA-256 hash to detect duplicates
-    featured         Boolean  @default(false)	// featured images on Best Moments gallery
-    bestMoment       Boolean  @default(false)   // for "Best Moments" gallery
+	id               Int      @id @default(autoincrement())
+	siteSlug         String   // ownership - links to SITE_SLUG
+	originalFilename String   // original name from user
+	image            String   // final stored filename in /public/images
+	hash             String   // SHA-256 hash to detect duplicates
+	featured         Boolean  @default(false)	// featured images on Best Moments gallery
+	bestMoment       Boolean  @default(false)   // for "Best Moments" gallery
 	home             Boolean  @default(false)	// featured on Home page
-    width            Int?
-    height           Int?
-    caption          String?
-    takenAt          DateTime?
-    takenAtSource    String?   // "exif" or "filename" or "manual"
-    createdAt        DateTime @default(now())
+	width            Int?
+	height           Int?
+	caption          String?
+	takenAt          DateTime?
+	takenAtSource    String?   // "exif" or "filename" or "manual"
+	createdAt        DateTime @default(now())
 
 	@@unique([siteSlug, hash])
-    @@index([siteSlug])
-    @@index([takenAt])
+	@@index([siteSlug])
+	@@index([takenAt])
 }
 
 model Video {
-    id          Int      @id @default(autoincrement())
-    siteSlug    String
-    youtubeId   String   @unique   // e.g. "dQw4w9wgxcq"
-    title       String
-    description String?
-    thumbnail   String?
-    takenAt		DateTime?	// from YouTube
+	id          Int      @id @default(autoincrement())
+	siteSlug    String
+	youtubeId   String   // e.g. "dQw4w9wgxcq"
+	title       String
+	description String?
+	thumbnail   String?
+	takenAt		DateTime?	// from YouTube
 	bestMoment  Boolean  @default(false)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
 
 	@@unique([siteSlug, youtubeId])
-    @@index([siteSlug])
-    @@index([youtubeId])
+	@@index([siteSlug])
+	@@index([youtubeId])
 }
 
 model Admin {
-    id        Int      @id @default(autoincrement())
-    username  String   @unique
-    password  String   // hashed password
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+	id        Int      @id @default(autoincrement())
+	siteSlug  String
+	username  String
+	password  String   // hashed password
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+
+	@@unique([siteSlug, username])
 }

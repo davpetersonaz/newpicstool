@@ -299,6 +299,7 @@ router.get('/videos', async (req, res) => {
 			googleAnalyticsId: config.googleAnalyticsId,
 			siteSlug,
 			videos,
+			allVideos: videos,
 			isAdmin: true
 		});
 	} catch (error) {
