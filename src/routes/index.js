@@ -131,7 +131,7 @@ router.get('/pictures', async (req, res) => {
 			src: photo.image,
 			caption: photo.caption || '',
 			home: photo.home || false,
-		    bestMoment: photo.bestMoment,
+			bestMoment: photo.bestMoment,
 			featured: photo.featured
 		}));
 		const initialImages = allImages.slice(0, pageSize);
@@ -154,8 +154,8 @@ router.get('/pictures', async (req, res) => {
 			headerTitle: config?.title || 'Memorial Site',
 			title,
 			googleAnalyticsId: config.googleAnalyticsId,
-		    pageSize,
-		    isMobile: mobile,
+			pageSize,
+			isMobile: mobile,
 			allImages,
 			images: initialImages,
 			featuredImages: [],
@@ -223,7 +223,7 @@ router.get('/search', async (req, res) => {
 			src: photo.image,
 			caption: photo.caption || '',
 			home: photo.home || false,
-		    bestMoment: photo.bestMoment,
+			bestMoment: photo.bestMoment,
 			featured: photo.featured
 		}));
 		const initialImages = allImages.slice(0, pageSize);
@@ -412,11 +412,16 @@ router.get('/videos', async (req, res) => {
 
 // Admin: Update caption (instant)
 router.post('/api/photo/:id/caption', async (req, res) => {
-	if (!req.session?.isAdmin) return res.status(401).json({ success: false });
+	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
 
 	const photoId = parseInt(req.params.id);
+	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const { caption } = req.body;
 	try {
+		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
+		if (!photo || photo.siteSlug !== siteSlug) {
+			return res.status(404).json({ success: false });
+		}
 		await req.prisma.photo.update({
 			where: { id: photoId },
 			data: { caption: caption || null }
@@ -430,21 +435,21 @@ router.post('/api/photo/:id/caption', async (req, res) => {
 
 // Admin: Toggle featured or bestMoment
 router.post('/api/photo/:id/toggle', async (req, res) => {
-	if (!req.session?.isAdmin) return res.status(401).json({ success: false });
+	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
 
 	const photoId = parseInt(req.params.id);
+	const siteSlug = process.env.SITE_SLUG || 'slug';
 	const { field } = req.body; // "featured", "bestMoment", or "home"
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
-		if (!photo) return res.status(404).json({ success: false });
-
+		if (!photo || photo.siteSlug !== siteSlug) {
+			return res.status(404).json({ success: false });
+		}
 		const newValue = !photo[field];
-
 		await req.prisma.photo.update({
 			where: { id: photoId },
 			data: { [field]: newValue }
 		});
-
 		res.json({ success: true, newValue });
 	} catch (err) {
 		console.error(err);
@@ -457,12 +462,12 @@ router.delete('/api/photo/:id', async (req, res) => {
 	if (!req.session?.isAdmin){ return res.status(401).json({ success: false, message: 'Unauthorized' }); }
 
 	const photoId = parseInt(req.params.id);
+	const siteSlug = process.env.SITE_SLUG || 'slug';
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
-		if (!photo) {
-			return res.status(404).json({ success: false, message: 'Photo not found' });
+		if (!photo || photo.siteSlug !== siteSlug) {
+			return res.status(404).json({ success: false });
 		}
-
 		// Delete from R2
 		if (photo.image && photo.image.startsWith('http')) {
 			try {
@@ -471,7 +476,6 @@ router.delete('/api/photo/:id', async (req, res) => {
 				console.warn('R2 delete warning:', r2Err.message);
 			}
 		} 
-
 		// Delete from database
 		await req.prisma.photo.delete({ where: { id: photoId } });
 		res.json({ success: true });

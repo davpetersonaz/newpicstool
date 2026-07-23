@@ -117,8 +117,15 @@ router.post('/photos/upload', (req, res, next) => {
 		try {
 			const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
 
-			// Check for duplicate
-			const existing = await req.prisma.photo.findUnique({ where: { hash } });
+			// Check for duplicate WITHIN THIS SITE (siteSlug-specific)
+			const existing = await req.prisma.photo.findUnique({
+				where: { 
+					hash_siteSlug: {   // composite unique key
+						hash: hash,
+						siteSlug: siteSlug
+					}
+				}
+			});
 			if (existing) {
 				duplicates++;
 				continue;
@@ -210,7 +217,7 @@ router.post('/photos/upload', (req, res, next) => {
 		}
 	}
 	const message = `Upload complete: ${success} photos added.` + 
-                   (duplicates ? ` ${duplicates} duplicate(s) skipped.` : '');
+				(duplicates ? ` ${duplicates} duplicate(s) skipped.` : '');
 
 	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
 });
@@ -495,10 +502,16 @@ router.post('/update', async (req, res) => {
 	if (!title || !bio) {
 		return res.status(400).send('Title and bio are required');
 	}
-	const finalSlug = submittedSlug.trim() || process.env.SITE_SLUG || 'slug';
+	const currentSlug = process.env.SITE_SLUG || 'slug';
+	const finalSlug = submittedSlug.trim() || currentSlug;
+	// Prevent changing slug after initial setup
+	if (finalSlug !== currentSlug && currentSlug !== 'slug') {
+		return res.status(403).send('Slug cannot be changed after initial setup.');
+	}
+
 	try {
 		await req.prisma.siteConfig.upsert({
-			where: { siteSlug: finalSlug },
+			where: { siteSlug: currentSlug },
 			update: { 
 				preTitle: (preTitle || '').trim(),
 				title, 
@@ -514,11 +527,10 @@ router.post('/update', async (req, res) => {
 			}
 		});
 
-		// If this was first setup, update .env file
+		// Only update .env on first setup
 		if (!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug') {
 			await updateEnvSlug(finalSlug);
 		}
-
 		res.redirect('/admin?message=Site settings saved successfully.');
 	} catch(error) {
 		console.error(error);
