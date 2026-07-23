@@ -2,6 +2,8 @@
 import bcrypt from 'bcryptjs';
 import express from 'express';
 
+import asyncHandler from '../middleware/asyncHandler.js';
+
 const router = express.Router();
 
 // Admin Login GET
@@ -13,7 +15,7 @@ router.get('/admin/login', (req, res) => {
 });
 
 // Admin Login POST
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const { username, password } = req.body;
 	try {
@@ -37,7 +39,7 @@ router.post('/admin/login', async (req, res) => {
 		console.error('Login error:', err);
 		res.redirect('/admin/login?error=Server error');
 	}
-});
+}));
 
 // Admin Logout
 router.get('/admin/logout', (req, res) => {

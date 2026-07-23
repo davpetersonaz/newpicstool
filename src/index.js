@@ -32,6 +32,10 @@ app.set('etag', false);
 // This helps surface EJS errors
 process.on('uncaughtException', (err) => {
 	console.error('Uncaught Exception:', err);
+	// In production you usually want to exit so the process manager restarts it
+	if (process.env.NODE_ENV === 'production') {
+		process.exit(1);
+	}
 });
 
 // Middleware
@@ -61,15 +65,15 @@ app.use('/admin', adminRoutes); // protected admin dashboard
 app.use((req, res) => {
 	res.status(404).render('404', { 
 		title: 'Page Not Found',
-		headerTitle: 'Memorial Site',
-		googleAnalyticsId: null
+		headerTitle: res.locals.siteConfig?.title || 'Memorial Site',
+		googleAnalyticsId: res.locals.siteConfig?.googleAnalyticsId || null
 	});
 });
 
 // Error handler - improved to catch EJS rendering errors
 app.use((err, req, res, next) => {
 	console.error('=== UNCAUGHT ERROR ===');
-	console.error('URL:', req.url);
+	console.error('URL:', req.method, req.url);
 	console.error(err.stack || err);
 
 	// Prevent "headers already sent" error
@@ -77,10 +81,21 @@ app.use((err, req, res, next) => {
 		return next(err);
 	}
 
-	res.status(500).render('404', { 
+	// API routes → JSON
+	if (req.path.startsWith('/api/') || req.xhr || req.headers.accept?.includes('application/json')) {
+		return res.status(err.status || 500).json({
+			success: false,
+			message: process.env.NODE_ENV === 'production' 
+				? 'Internal server error' 
+				: (err.message || 'Internal server error')
+		});
+	}
+
+	// HTML routes → nice error page
+	res.status(err.status || 500).render('404', {
 		title: 'Server Error',
-		headerTitle: 'Memorial Site',
-		googleAnalyticsId: null
+		headerTitle: res.locals.siteConfig?.title || 'Memorial Site',
+		googleAnalyticsId: res.locals.siteConfig?.googleAnalyticsId || null
 	});
 });
 

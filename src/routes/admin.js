@@ -9,7 +9,9 @@ import multer from 'multer';
 import fetch from 'node-fetch';
 import sharp from 'sharp';
 
+import asyncHandler from '../middleware/asyncHandler.js';
 import { isAuthenticated } from '../middleware/auth.js';
+import { sendError } from '../utils/errors.js';
 
 const router = express.Router();
 
@@ -44,7 +46,7 @@ async function updateEnvSlug(newSlug) {
 
 // ====================== DASHBOARD ======================
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
 	try {
 		const siteSlug = req.siteSlug;
 		let config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
@@ -64,13 +66,13 @@ router.get('/', async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Admin dashboard error:', error);
-		res.status(500).send('Error loading admin dashboard');
+		return sendError(res, 500, 'Error loading admin dashboard');
 	}
-});
+}));
 
 // ====================== PHOTOS MANAGEMENT ======================
 
-router.get('/photos', async (req, res) => {
+router.get('/photos', asyncHandler(async (req, res) => {
 	try {
 		const siteSlug = req.siteSlug;
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
@@ -89,29 +91,30 @@ router.get('/photos', async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Photos page error:', error);
-		res.status(500).send('Error loading photos');
+		return sendError(res, 500, 'Error loading photos');
 	}
-});
+}));
 
 // ====================== UPLOAD PHOTOS (Cloudflare R2) ======================
 router.post('/photos/upload', (req, res, next) => {
 	upload(req, res, (err) => {
 		if (err) {
 			if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-				return res.status(400).send('Too many files. Maximum is 30 at a time.');
+				return sendError(res, 400, 'Too many files. Maximum is 30 at a time.');
 			}
-			return res.status(400).send('Upload error: ' + err.message);
+			return sendError(res, 400, 'Upload error: ' + err.message);
 		}
 		next();
 	});
-}, async (req, res) => {
+}, asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const files = req.files || [];
 	if (files.length === 0) {
-		return res.status(400).send('No files uploaded');
+		return sendError(res, 400, 'No files uploaded');
 	}
 	let success = 0;
 	let duplicates = 0;
+	const failures = [];
 
 	for (const file of files) {
 		try {
@@ -213,16 +216,17 @@ router.post('/photos/upload', (req, res, next) => {
 			success++;
 		} catch (err) {
 			console.error(`Failed to process ${file.originalname}:`, err);
+		    failures.push(file.originalname);
 		}
 	}
 	const message = `Upload complete: ${success} photos added.` + 
 				(duplicates ? ` ${duplicates} duplicate(s) skipped.` : '');
 
 	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
-});
+}));
 
 // ====================== DELETE PHOTO (Cloudflare R2) ======================
-router.post('/photos/delete/:id', async (req, res) => {
+router.post('/photos/delete/:id', asyncHandler(async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
 
@@ -231,7 +235,7 @@ router.post('/photos/delete/:id', async (req, res) => {
 			where: { id: photoId }
 		});
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return res.status(404).send('Photo not found');
+			return sendError(res, 404, 'Photo not found');
 		}
 
 		// Delete from Cloudflare R2
@@ -250,12 +254,12 @@ router.post('/photos/delete/:id', async (req, res) => {
 		res.redirect('/admin/photos?message=Photo deleted successfully.');
 	} catch (error) {
 		console.error(error);
-		res.status(500).send('Failed to delete photo');
+		return sendError(res, 500, 'Failed to delete photo');
 	}
-});
+}));
 
 // Update taken date
-router.post('/photos/update-taken/:id', async (req, res) => {
+router.post('/photos/update-taken/:id', asyncHandler(async (req, res) => {
 	const photoId = parseInt(req.params.id);
 	const { takenAt } = req.body;
 	const siteSlug = req.siteSlug;
@@ -263,7 +267,7 @@ router.post('/photos/update-taken/:id', async (req, res) => {
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return res.status(404).send('Photo not found');
+			return sendError(res, 404, 'Photo not found');
 		}
 
 		await req.prisma.photo.update({
@@ -277,14 +281,14 @@ router.post('/photos/update-taken/:id', async (req, res) => {
 		res.json({ success: true });
 	} catch (error) {
 		console.error(error);
-		res.status(500).json({ success: false });
+		return sendError(res, 500, 'failed to update taken-date');
 	}
-});
+}));
 
 // ====================== VIDEOS MANAGEMENT ======================
 
 // GET /admin/videos
-router.get('/videos', async (req, res) => {
+router.get('/videos', asyncHandler(async (req, res) => {
 	try {
 		const siteSlug = req.siteSlug;
 		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
@@ -304,19 +308,19 @@ router.get('/videos', async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Videos page error:', error);
-		res.status(500).send('Error loading videos');
+		return sendError(res, 500, 'Error loading videos');
 	}
-});
+}));
 
 // Toggle Best Moment for Video
-router.post('/videos/toggle-best/:id', async (req, res) => {
+router.post('/videos/toggle-best/:id', asyncHandler(async (req, res) => {
 	const videoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
 
 	try {
 		const video = await req.prisma.video.findUnique({ where: { id: videoId } });
 		if (!video || video.siteSlug !== siteSlug) {
-			return res.status(404).json({ success: false, message: 'Video not found' });
+			return sendError(res, 404, 'Video not found' );
 		}
 		const newValue = !video.bestMoment;
 
@@ -328,17 +332,17 @@ router.post('/videos/toggle-best/:id', async (req, res) => {
 		res.json({ success: true, newValue });
 	} catch (error) {
 		console.error('Toggle bestMoment error:', error);
-		res.status(500).json({ success: false });
+		return sendError(res, 500, 'failed to toggle video bestmoments');
 	}
-});
+}));
 
 // POST /admin/videos/import-playlist
-router.post('/videos/import-playlist', async (req, res) => {
+router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 	const { playlistId } = req.body;
 	const siteSlug = req.siteSlug;
 	const apiKey = process.env.YOUTUBE_API_KEY;
-	if (!playlistId){ return res.status(400).send('Playlist ID is required'); }
-	if (!apiKey){ return res.status(500).send('YouTube API key is not configured'); }
+	if (!playlistId){ return sendError(res, 400, 'Playlist ID is required'); }
+	if (!apiKey){ return sendError(res, 500, 'YouTube API key is not configured'); }
 
 	try {
 		// Clean playlist ID if full URL was pasted
@@ -429,15 +433,15 @@ router.post('/videos/import-playlist', async (req, res) => {
 		res.redirect(`/admin/videos?message=${encodeURIComponent(message)}`);
 	} catch (error) {
 		console.error('Playlist import error:', error);
-		res.status(500).send('Failed to import playlist. Check console.');
+		return sendError(res, 500, 'Failed to import playlist. Check console.');
 	}
-});
+}));
 
 // POST /admin/videos/add
-router.post('/videos/add', async (req, res) => {
+router.post('/videos/add', asyncHandler(async (req, res) => {
 	const { youtubeUrl } = req.body;
 	const siteSlug = req.siteSlug;
-	if (!youtubeUrl){ return res.status(400).send('YouTube URL is required'); }
+	if (!youtubeUrl){ return sendError(res, 400, 'YouTube URL is required'); }
 
 	try {
 		// Extract YouTube ID
@@ -465,12 +469,12 @@ router.post('/videos/add', async (req, res) => {
 		res.redirect('/admin/videos?message=Video added successfully');
 	} catch (error) {
 		console.error(error);
-		res.status(500).send('Failed to add video');
+		return sendError(res, 500, 'Failed to add video');
 	}
-});
+}));
 
 // DELETE ALL VIDEOS
-router.delete('/videos/delete-all', async (req, res) => {
+router.delete('/videos/delete-all', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	try {
 		const deleted = await req.prisma.video.deleteMany({ where: { siteSlug } });
@@ -478,12 +482,12 @@ router.delete('/videos/delete-all', async (req, res) => {
 		res.json({ success: true, count: deleted.count });
 	} catch (error) {
 		console.error('Delete all videos error:', error);
-		res.status(500).json({ success: false });
+		return sendError(res, 500, 'failed to delete all videos');
 	}
-});
+}));
 
 // DELETE /admin/videos/delete/:id
-router.delete('/videos/delete/:id', async (req, res) => {
+router.delete('/videos/delete/:id', asyncHandler(async (req, res) => {
 	const videoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
 
@@ -492,28 +496,28 @@ router.delete('/videos/delete/:id', async (req, res) => {
 			where: { id: videoId }
 		});
 		if (!video || video.siteSlug !== siteSlug) {
-			return res.status(404).json({ success: false, message: 'Video not found' });
+			return sendError(res, 404, 'Video not found');
 		}
 		await req.prisma.video.delete({ where: { id: videoId } });
 		res.json({ success: true });
 	} catch (error) {
 		console.error('Video delete error:', error);
-		res.status(500).json({ success: false, message: 'Failed to delete video' });
+		return sendError(res, 500, 'Failed to delete video');
 	}
-});
+}));
 
 // ====================== SITE SETTINGS ======================
 
-router.post('/update', async (req, res) => {
+router.post('/update', asyncHandler(async (req, res) => {
 	const { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
 	if (!title || !bio) {
-		return res.status(400).send('Title and bio are required');
+		return sendError(res, 400, 'Title and bio are required');
 	}
 	const currentSlug = req.siteSlug;
 	const finalSlug = submittedSlug.trim() || currentSlug;
 	// Prevent changing slug after initial setup
 	if (finalSlug !== currentSlug && currentSlug !== 'slug') {
-		return res.status(403).send('Slug cannot be changed after initial setup.');
+		return sendError(res, 403, 'Slug cannot be changed after initial setup.');
 	}
 
 	try {
@@ -544,9 +548,9 @@ router.post('/update', async (req, res) => {
 		res.redirect('/admin?message=Site settings saved successfully.');
 	} catch(error) {
 		console.error(error);
-		res.status(500).send('Error saving site settings');
+		return sendError(res, 500, 'Error saving site settings');
 	}
-});
+}));
 
 // ====================== R2 HELPERS ======================
 

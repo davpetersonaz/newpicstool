@@ -1,6 +1,9 @@
 //src/routes/index.js
 import express from 'express';
 
+import asyncHandler from '../middleware/asyncHandler.js';
+import { sendError } from '../utils/errors.js';
+
 import { deleteFromR2 } from './admin.js';
 
 const router = express.Router();
@@ -28,7 +31,7 @@ function shuffleArray(array) {
 }
 
 // ====================== HOME ======================
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const defaultConfig = {
 		preTitle: 'Welcome to a celebration of the life and times of',
@@ -86,10 +89,10 @@ router.get('/', async (req, res) => {
 			googleAnalyticsId: null
 		});
 	}
-});
+}));
 
 // ====================== PICTURES ======================
-router.get('/pictures', async (req, res) => {
+router.get('/pictures', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const mobile = isMobile(req);
 	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
@@ -167,12 +170,12 @@ router.get('/pictures', async (req, res) => {
 		});
 	} catch (err) {
 		console.error('Pictures route error:', err);
-		res.status(500).send('Error loading images');
+		return sendError(res, 500, 'Error loading images');
 	}
-});
+}));
 
 // ====================== SEARCH ======================
-router.get('/search', async (req, res) => {
+router.get('/search', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
 	if (!query){ return res.redirect('/pictures'); }
@@ -262,12 +265,12 @@ router.get('/search', async (req, res) => {
 
 	} catch (err) {
 		console.error('Search error:', err);
-		res.status(500).send('Error processing search');
+		return sendError(res, 500, 'Error processing search');
 	}
-});
+}));
 
 // Best Moments route
-router.get('/best', async (req, res) => {
+router.get('/best', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	try {
 		const config = await req.prisma.siteConfig.findFirst({
@@ -331,12 +334,12 @@ router.get('/best', async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Best moments error:', error);
-		res.status(500).send('Error loading best moments');
+		return sendError(res, 500, 'Error loading best moments');
 	}
-});
+}));
 
 // ====================== VIDEOS ======================
-router.get('/videos', async (req, res) => {
+router.get('/videos', asyncHandler(async (req, res) => {
 	const mobile = isMobile(req);
 	const initialLimit = mobile ? MOBILE_VIDEO_LIMIT : DESKTOP_VIDEO_LIMIT;
 	const siteSlug = req.siteSlug;
@@ -409,13 +412,13 @@ router.get('/videos', async (req, res) => {
 
 	} catch (err) {
 		console.error('Videos route error:', err);
-		res.status(500).send('Error loading videos');
+		return sendError(res, 500, 'Error loading videos');
 	}
-});
+}));
 
 // Admin: Update caption (instant)
-router.post('/api/photo/:id/caption', async (req, res) => {
-	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
+router.post('/api/photo/:id/caption', asyncHandler(async (req, res) => {
+	if (!req.session?.isAdmin){ return sendError(res, 401, '!isAdmin'); }
 
 	const photoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
@@ -423,7 +426,7 @@ router.post('/api/photo/:id/caption', async (req, res) => {
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return res.status(404).json({ success: false });
+			return sendError(res, 404, 'siteSlug error');
 		}
 		await req.prisma.photo.update({
 			where: { id: photoId },
@@ -432,13 +435,13 @@ router.post('/api/photo/:id/caption', async (req, res) => {
 		res.json({ success: true });
 	} catch (err) {
 		console.error(err);
-		res.status(500).json({ success: false });
+		return sendError(res, 500, 'failed to instant-update caption');
 	}
-});
+}));
 
 // Admin: Toggle featured or bestMoment
-router.post('/api/photo/:id/toggle', async (req, res) => {
-	if (!req.session?.isAdmin){ return res.status(401).json({ success: false }); }
+router.post('/api/photo/:id/toggle', asyncHandler(async (req, res) => {
+	if (!req.session?.isAdmin){ return sendError(res, 401, '!isAdmin'); }
 
 	const photoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
@@ -446,7 +449,7 @@ router.post('/api/photo/:id/toggle', async (req, res) => {
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return res.status(404).json({ success: false });
+			return sendError(res, 404, 'siteSlug error');
 		}
 		const newValue = !photo[field];
 		await req.prisma.photo.update({
@@ -456,20 +459,20 @@ router.post('/api/photo/:id/toggle', async (req, res) => {
 		res.json({ success: true, newValue });
 	} catch (err) {
 		console.error(err);
-		res.status(500).json({ success: false });
+		return sendError(res, 500, 'failed to toggle featured/bestmoment');
 	}
-});
+}));
 
 // Admin: Delete photo
-router.delete('/api/photo/:id', async (req, res) => {
-	if (!req.session?.isAdmin){ return res.status(401).json({ success: false, message: 'Unauthorized' }); }
+router.delete('/api/photo/:id', asyncHandler(async (req, res) => {
+	if (!req.session?.isAdmin){ return sendError(res, 401, 'Unauthorized'); }
 
 	const photoId = parseInt(req.params.id);
 	const siteSlug = req.siteSlug;
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return res.status(404).json({ success: false });
+			return sendError(res, 404, 'siteSlug erro');
 		}
 		// Delete from R2
 		if (photo.image && photo.image.startsWith('http')) {
@@ -484,8 +487,8 @@ router.delete('/api/photo/:id', async (req, res) => {
 		res.json({ success: true });
 	} catch (err) {
 		console.error('Delete error:', err);
-		res.status(500).json({ success: false, message: 'Failed to delete photo' });
+		return sendError(res, 500, 'Failed to delete photo' );
 	}
-});
+}));
 
 export default router;

@@ -1,6 +1,8 @@
 // src/middleware/auth.js
 import session from 'express-session';
 
+import { sendError } from '../utils/errors.js';
+
 const sessionMiddleware = session({
 	secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
 	resave: false,
@@ -21,11 +23,7 @@ export const isAuthenticated = (req, res, next) => {
 	}
 
 	if (req.headers['accept']?.includes('application/json') || req.xhr) {
-		return res.status(401).json({ 
-			success: false, 
-			message: 'Session expired. Please log in again.',
-			requireLogin: true 
-		});
+		return sendError(res, 401, 'Session expired. Please log in again.');
 	}
 
 	// Normal browser navigation → redirect
