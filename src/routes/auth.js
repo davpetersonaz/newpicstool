@@ -17,7 +17,13 @@ router.get('/admin/login', (req, res) => {
 // Admin Login POST
 router.post('/admin/login', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
-	const { username, password } = req.body;
+	let { username, password } = req.body;
+	username = (username || '').trim();
+	password = (password || '');
+	if (!username || !password) { return res.redirect('/admin/login?error=Username and password are required'); }
+	if (typeof username !== 'string' || typeof password !== 'string') { return res.redirect('/admin/login?error=Invalid input'); }
+	if (username.length > 100 || password.length > 200) { return res.redirect('/admin/login?error=Input too long'); }
+
 	try {
 		const admin = await req.prisma.admin.findUnique({
 			where: { 

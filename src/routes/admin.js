@@ -123,6 +123,12 @@ router.post('/photos/upload', (req, res, next) => {
 	if (files.length === 0) {
 		return sendError(res, 400, 'No files uploaded');
 	}
+	const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+	for (const file of files) {
+		if (!allowedMimes.includes(file.mimetype)) {
+			return sendError(res, 400, `Invalid file type: ${file.originalname}. Only JPEG, PNG, WebP, GIF allowed.`);
+		}
+	}
 
 	const CONCURRENCY = 4;
 
@@ -252,6 +258,7 @@ router.post('/photos/upload', (req, res, next) => {
 // ====================== DELETE PHOTO (Cloudflare R2) ======================
 router.post('/photos/delete/:id', asyncHandler(async (req, res) => {
 	const photoId = parseInt(req.params.id);
+	if (isNaN(photoId)) { return sendError(res, 400, 'Invalid photo ID'); }	
 	const siteSlug = req.siteSlug;
 
 	try {
@@ -259,7 +266,7 @@ router.post('/photos/delete/:id', asyncHandler(async (req, res) => {
 			where: { id: photoId }
 		});
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return deleteFromR2(res, 404, 'Photo not found');
+			return sendError(res, 404, 'Photo not found');
 		}
 
 		// Delete from Cloudflare R2
@@ -285,7 +292,9 @@ router.post('/photos/delete/:id', asyncHandler(async (req, res) => {
 // Update taken date
 router.post('/photos/update-taken/:id', asyncHandler(async (req, res) => {
 	const photoId = parseInt(req.params.id);
+	if (isNaN(photoId)) { return sendError(res, 400, 'Invalid photo ID'); }	
 	const { takenAt } = req.body;
+	if (takenAt && isNaN(Date.parse(takenAt))) { return sendError(res, 400, 'Invalid date format. Use YYYY-MM-DD'); }
 	const siteSlug = req.siteSlug;
 
 	try {
@@ -339,6 +348,7 @@ router.get('/videos', asyncHandler(async (req, res) => {
 // Toggle Best Moment for Video
 router.post('/videos/toggle-best/:id', asyncHandler(async (req, res) => {
 	const videoId = parseInt(req.params.id);
+	if (isNaN(videoId)) { return sendError(res, 400, 'Invalid video ID'); }
 	const siteSlug = req.siteSlug;
 
 	try {
@@ -373,6 +383,7 @@ router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 		let cleanId = playlistId.trim();
 		const match = playlistId.match(/list=([a-zA-Z0-9_-]+)/);
 		if (match){ cleanId = match[1]; }
+		if (!/^[a-zA-Z0-9_-]{10,64}$/.test(cleanId)) { return sendError(res, 400, 'Invalid YouTube playlist ID'); }		
 		let imported = 0;   // new videos
 		let updated = 0;    // metadata changed
 		let skipped = 0;    // no change
@@ -483,8 +494,9 @@ router.post('/videos/add', asyncHandler(async (req, res) => {
 	try {
 		// Extract YouTube ID
 		let youtubeId = youtubeUrl.trim();
-		const match = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]+)/);
+		const match = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/);
 		if (match){ youtubeId = match[1]; }
+		if (!/^[a-zA-Z0-9_-]{11}$/.test(youtubeId)) { return sendError(res, 400, 'Invalid YouTube video ID'); }
 
 		// Auto-fetch metadata from YouTube (optional but very nice)
 		const title = youtubeId;
@@ -526,6 +538,7 @@ router.delete('/videos/delete-all', asyncHandler(async (req, res) => {
 // DELETE /admin/videos/delete/:id
 router.delete('/videos/delete/:id', asyncHandler(async (req, res) => {
 	const videoId = parseInt(req.params.id);
+	if (isNaN(videoId)) { return sendError(res, 400, 'Invalid video ID'); }
 	const siteSlug = req.siteSlug;
 
 	try {
@@ -546,16 +559,31 @@ router.delete('/videos/delete/:id', asyncHandler(async (req, res) => {
 // ====================== SITE SETTINGS ======================
 
 router.post('/update', asyncHandler(async (req, res) => {
-	const { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
+	let { preTitle, title, postTitle, bio, siteSlug: submittedSlug } = req.body;
+
+	// Trim
+	title = (title || '').trim();
+	bio = (bio || '').trim();
+	preTitle = (preTitle || '').trim();
+	postTitle = (postTitle || '').trim();
+	submittedSlug = (submittedSlug || '').trim();
 	if (!title || !bio) {
 		return sendError(res, 400, 'Title and bio are required');
 	}
-	const currentSlug = req.siteSlug;
-	const finalSlug = submittedSlug.trim() || currentSlug;
-	// Prevent changing slug after initial setup
-	if (finalSlug !== currentSlug && currentSlug !== 'slug') {
-		return sendError(res, 403, 'Slug cannot be changed after initial setup.');
+
+	// Length limits
+	if (title.length > 200){ return sendError(res, 400, 'Title too long (max 200)'); }
+	if (preTitle.length > 200){ return sendError(res, 400, 'Pre-title too long (max 200)'); }
+	if (postTitle.length > 200){ return sendError(res, 400, 'Post-title too long (max 200)'); }
+	if (bio.length > 2000){ return sendError(res, 400, 'Bio too long (max 2000)'); }
+
+	// Slug format
+	if (submittedSlug && !/^[a-z0-9-]{1,50}$/i.test(submittedSlug)) {
+		return sendError(res, 400, 'Slug must be 1–50 characters: letters, numbers, hyphens only');
 	}
+
+	const currentSlug = req.siteSlug;
+	const finalSlug = submittedSlug || currentSlug;
 
 	try {
 		await req.prisma.siteConfig.upsert({
@@ -584,7 +612,7 @@ router.post('/update', asyncHandler(async (req, res) => {
 		// Only update .env on first setup
 		if (
 			process.env.NODE_ENV !== 'production' &&
-			(!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug')
+				(!process.env.SITE_SLUG || process.env.SITE_SLUG === 'slug')
 		) {
 			await updateEnvSlug(finalSlug);
 		}

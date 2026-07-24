@@ -190,14 +190,15 @@ router.get('/pictures', asyncHandler(async (req, res) => {
 // ====================== SEARCH ======================
 router.get('/search', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
-	const query = req.query.q ? req.query.q.trim().toLowerCase() : '';
+	const query = (req.query.q ? req.query.q.trim().toLowerCase() : '');
 	if (!query){ return res.redirect('/pictures'); }
+	if (query.length > 200) { return sendError(res, 400, 'Search query too long'); }
 	const mobile = isMobile(req);
-	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
+	const pageSize = (mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE);
 	const page = Math.max(parseInt(req.query.page) || 1, 1);
-	const sort = req.query.sort || 'random';
+	const sort = (req.query.sort || 'random');
 	const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
-	const baseTitle = config?.title || 'Memorial Gallery';
+	const baseTitle = (config?.title || 'Memorial Gallery');
 	const title = `${baseTitle} — Search: "${query}"`;
 
 	const where = {
@@ -438,8 +439,11 @@ router.post('/api/photo/:id/caption', asyncHandler(async (req, res) => {
 	if (!req.session?.isAdmin){ return sendError(res, 401, '!isAdmin'); }
 
 	const photoId = parseInt(req.params.id);
+	if (isNaN(photoId)){ return sendError(res, 400, 'Invalid photo ID'); }
 	const siteSlug = req.siteSlug;
-	const { caption } = req.body;
+	let { caption } = req.body;
+	caption = (caption || '').trim();
+	if (caption.length > 500) { return sendError(res, 400, 'Caption too long (max 500 characters)'); }
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
@@ -461,8 +465,11 @@ router.post('/api/photo/:id/toggle', asyncHandler(async (req, res) => {
 	if (!req.session?.isAdmin){ return sendError(res, 401, '!isAdmin'); }
 
 	const photoId = parseInt(req.params.id);
+	if (isNaN(photoId)){ return sendError(res, 400, 'Invalid photo ID'); }
 	const siteSlug = req.siteSlug;
 	const { field } = req.body; // "featured", "bestMoment", or "home"
+	const allowedFields = ['featured', 'bestMoment', 'home'];
+	if (!allowedFields.includes(field)) { return sendError(res, 400, 'Invalid field'); }
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
 		if (!photo || photo.siteSlug !== siteSlug) {
@@ -485,12 +492,11 @@ router.delete('/api/photo/:id', asyncHandler(async (req, res) => {
 	if (!req.session?.isAdmin){ return sendError(res, 401, 'Unauthorized'); }
 
 	const photoId = parseInt(req.params.id);
+	if (isNaN(photoId)){ return sendError(res, 400, 'Invalid photo ID'); }
 	const siteSlug = req.siteSlug;
 	try {
 		const photo = await req.prisma.photo.findUnique({ where: { id: photoId } });
-		if (!photo || photo.siteSlug !== siteSlug) {
-			return sendError(res, 404, 'siteSlug erro');
-		}
+		if (!photo || photo.siteSlug !== siteSlug) { return sendError(res, 404, 'siteSlug error'); }
 		// Delete from R2
 		if (photo.image && photo.image.startsWith('http')) {
 			try {
