@@ -1,4 +1,5 @@
 //src/routes/index.js
+import { Prisma } from '@prisma/client';
 import express from 'express';
 
 import asyncHandler from '../middleware/asyncHandler.js';
@@ -96,82 +97,94 @@ router.get('/pictures', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
 	const mobile = isMobile(req);
 	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
-	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: siteSlug } });
-		const title = config?.title || 'Memorial Gallery';
-		const sort = req.query.sort || 'random';
-		let dbPhotos = [];
+	const page = Math.max(parseInt(req.query.page) || 1, 1);
+	const sort = req.query.sort || 'random';
+	const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
+	const title = config?.title || 'Memorial Gallery';
 
-		if (sort === 'chrono') {
-			// Chronological sort: newest takenAt first, missing dates at the very end
-			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: siteSlug },
-				orderBy: [
-					{ takenAt: { sort: 'desc', nulls: 'last' } },   // newest date first
-					{ createdAt: 'desc' }                           // tie-breaker / fallback
-				]
-			});
-		} else if (sort === 'alpha') {
-			// Let Prisma handle alpha sort by caption
-			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: siteSlug },
-				orderBy: [
-					{ caption: 'asc' },           // alphabetical by caption
-					{ createdAt: 'desc' }         // stable tie-breaker
-				]
-			});
-		} else {
-			// Random sort - ALWAYS fetch fresh and shuffle on the server
-			dbPhotos = await req.prisma.photo.findMany({
-				where: { siteSlug: siteSlug },
-				orderBy: { createdAt: 'desc' }
-			});
-			dbPhotos = shuffleArray(dbPhotos);
-		}
+	// Build orderBy
+	let orderBy = [{ createdAt: 'desc' }];
+	if (sort === 'chrono') {
+		orderBy = [
+			{ takenAt: { sort: 'desc', nulls: 'last' } },
+			{ createdAt: 'desc' }
+		];
+	} else if (sort === 'alpha') {
+		orderBy = [
+			{ caption: 'asc' },
+			{ createdAt: 'desc' }
+		];
+	}
 
-		// Map to the format your EJS template expects
-		const allImages = dbPhotos.map(photo => ({
-			id: photo.id,
-			src: photo.image,
-			caption: photo.caption || '',
-			home: photo.home || false,
-			bestMoment: photo.bestMoment,
-			featured: photo.featured
-		}));
-		const initialImages = allImages.slice(0, pageSize);
+	// For random we still have to fetch more and shuffle (limitation of true random)
+	// We'll improve this later if needed
+	const isRandom = (sort === 'random');
+	let photos;
+	let total = 0;
 
-		// If this is a sort request (has ?sort=...), return JSON for client-side rendering
-		if (req.query.sort) {
-			return res.json({
-				success: true,
-				sort,
-				images: initialImages,     // first page only
-				allImages,
-				title,
-				isAdmin: !!req.session?.isAdmin,
-				pageSize
-			});
-		}
+	if (isRandom) {
+		total = await req.prisma.photo.count({ where: { siteSlug } });
+		// let Postgres do the random ordering
+		photos = await req.prisma.$queryRaw`
+			SELECT * FROM "Photo"
+			WHERE "siteSlug" = ${siteSlug}
+			ORDER BY RANDOM()
+			LIMIT ${pageSize}
+			OFFSET ${(page - 1) * pageSize}
+		`;
+	} else {
+		// Real DB pagination
+		total = await req.prisma.photo.count({ where: { siteSlug } });
+		photos = await req.prisma.photo.findMany({
+			where: { siteSlug },
+			orderBy,
+			take: pageSize,
+			skip: (page - 1) * pageSize
+		});
+	}
 
-		// Initial page load - use EJS
-		res.render('pictures', {
-			headerTitle: config?.title || 'Memorial Site',
-			title,
-			googleAnalyticsId: config.googleAnalyticsId,
+	const images = photos.map(photo => ({
+		id: photo.id,
+		src: photo.image,
+		caption: photo.caption || '',
+		home: photo.home || false,
+		bestMoment: photo.bestMoment,
+		featured: photo.featured
+	}));
+
+	const hasMore = page * pageSize < total;
+
+	// AJAX request (Load More or sort change)
+	if (req.query.page || req.query.sort || req.xhr || req.headers.accept?.includes('application/json')) {
+		return res.json({
+			success: true,
+			images,
+			page,
 			pageSize,
-			isMobile: mobile,
-			allImages,
-			images: initialImages,
-			featuredImages: [],
-			bestImages: [],
+			hasMore,
+			nextPage: hasMore ? page + 1 : null,
 			sort,
-			searchQuery: '',
+			title,
 			isAdmin: !!req.session?.isAdmin
 		});
-	} catch (err) {
-		console.error('Pictures route error:', err);
-		return sendError(res, 500, 'Error loading images');
 	}
+
+	// Normal first-page render
+	res.render('pictures', {
+		headerTitle: config?.title || 'Memorial Site',
+		title,
+		googleAnalyticsId: config?.googleAnalyticsId,
+		pageSize,
+		isMobile: mobile,
+		images,               // only the first page
+		featuredImages: [],
+		bestImages: [],
+		sort,
+		searchQuery: '',
+		isAdmin: !!req.session?.isAdmin,
+		hasMore,
+		nextPage: hasMore ? 2 : null
+	});
 }));
 
 // ====================== SEARCH ======================
@@ -181,239 +194,243 @@ router.get('/search', asyncHandler(async (req, res) => {
 	if (!query){ return res.redirect('/pictures'); }
 	const mobile = isMobile(req);
 	const pageSize = mobile ? MOBILE_PAGE_SIZE : DEFAULT_PAGE_SIZE;
+	const page = Math.max(parseInt(req.query.page) || 1, 1);
+	const sort = req.query.sort || 'random';
+	const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
+	const baseTitle = config?.title || 'Memorial Gallery';
+	const title = `${baseTitle} — Search: "${query}"`;
 
-	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug: siteSlug } });
-		const baseTitle = config?.title || 'Memorial Gallery';
-		const sort = req.query.sort || 'random';
-		let dbPhotos = [];
+	const where = {
+		siteSlug,
+		caption: { contains: query, mode: 'insensitive' }
+	};
 
-		if (sort === 'chrono') {
-			// Chronological search: newest takenAt first
-			dbPhotos = await req.prisma.photo.findMany({
-				where: {
-					siteSlug: siteSlug,
-					caption: { contains: query, mode: 'insensitive' }
-				},
-				orderBy: [
-					{ takenAt: { sort: 'desc', nulls: 'last' } },
-					{ createdAt: 'desc' }
-				]
-			});
-		} else if (sort === 'alpha') {
-			dbPhotos = await req.prisma.photo.findMany({
-				where: {
-					siteSlug: siteSlug,
-					caption: { contains: query, mode: 'insensitive' }
-				},
-				orderBy: [
-					{ caption: 'asc' },
-					{ createdAt: 'desc' }
-				]
-			});
-		} else {
-			// Alpha or random: fetch matching captions
-			dbPhotos = await req.prisma.photo.findMany({
-				where: {
-					siteSlug: siteSlug,
-					caption: { contains: query, mode: 'insensitive' }
-				},
-				orderBy: { createdAt: 'desc' }
-			});
-		}
+	let orderBy = [{ createdAt: 'desc' }];
+  	if (sort === 'chrono') {
+    	orderBy = [
+			{ takenAt: { sort: 'desc', nulls: 'last' } },
+			{ createdAt: 'desc' }
+		];
+	} else if (sort === 'alpha') {
+    	orderBy = [{ caption: 'asc' }, { createdAt: 'desc' }];
+  	}
 
-		// Map to the format expected by your 'pictures' EJS template
-		const allImages = dbPhotos.map(photo => ({
-			id: photo.id,
-			src: photo.image,
-			caption: photo.caption || '',
-			home: photo.home || false,
-			bestMoment: photo.bestMoment,
-			featured: photo.featured
-		}));
-		const initialImages = allImages.slice(0, pageSize);
+	const isRandom = sort === 'random';
+	let photos;
+	let total = 0;
 
-		// JSON response for sorting
-		if (req.query.sort) {
-			return res.json({
-				success: true,
-				sort,
-				images: initialImages,
-				allImages,
-				title: `${baseTitle} — Search: "${query}"`,
-				isAdmin: !!req.session?.isAdmin,
-				pageSize,
-				isMobile: mobile
-			});
-		} 
-
-		// Initial page render
-		res.render('pictures', {
-			headerTitle: baseTitle,
-			title: `${baseTitle} — Search: "${query}"`,
-			googleAnalyticsId: config.googleAnalyticsId,
-			allImages,
-			images: initialImages,
-			featuredImages: [],
-			bestImages: [],
-			sort,
-			searchQuery: query,
-			isAdmin: !!req.session?.isAdmin,
-			pageSize,
-			isMobile: mobile
+	if (isRandom) {
+		total = await req.prisma.photo.count({ where });
+		photos = await req.prisma.$queryRaw`
+			SELECT * FROM "Photo"
+			WHERE "siteSlug" = ${siteSlug}
+			AND "caption" ILIKE ${'%' + query + '%'}
+			ORDER BY RANDOM()
+			LIMIT ${pageSize}
+			OFFSET ${(page - 1) * pageSize}
+		`;
+	} else {
+		total = await req.prisma.photo.count({ where });
+		photos = await req.prisma.photo.findMany({
+			where,
+			orderBy,
+			take: pageSize,
+			skip: (page - 1) * pageSize
 		});
-
-	} catch (err) {
-		console.error('Search error:', err);
-		return sendError(res, 500, 'Error processing search');
 	}
+
+	const images = photos.map(photo => ({
+		id: photo.id,
+		src: photo.image,
+		caption: photo.caption || '',
+		home: photo.home || false,
+		bestMoment: photo.bestMoment,
+		featured: photo.featured
+	}));
+
+	const hasMore = page * pageSize < total;
+
+	if (req.query.page || req.query.sort || req.xhr || req.headers.accept?.includes('application/json')) {
+		return res.json({
+			success: true,
+			images,
+			page,
+			pageSize,
+			hasMore,
+			nextPage: hasMore ? page + 1 : null,
+			sort,
+			title,
+			isAdmin: !!req.session?.isAdmin,
+			searchQuery: query
+		});
+	} 
+
+	res.render('pictures', {
+		headerTitle: baseTitle,
+		title,
+		googleAnalyticsId: config?.googleAnalyticsId,
+		images,
+		featuredImages: [],
+		bestImages: [],
+		sort,
+		searchQuery: query,
+		isAdmin: !!req.session?.isAdmin,
+		pageSize,
+		isMobile: mobile,
+		hasMore,
+		nextPage: hasMore ? 2 : null
+	});
 }));
 
 // Best Moments route
 router.get('/best', asyncHandler(async (req, res) => {
 	const siteSlug = req.siteSlug;
-	try {
-		const config = await req.prisma.siteConfig.findFirst({
-			where: { siteSlug: siteSlug }
-		});
-		const baseTitle = config?.title || 'Memorial Site';
+	const page = Math.max(parseInt(req.query.page) || 1, 1);
+	const pageSize = DEFAULT_PAGE_SIZE;
 
-		// Get Featured photos (priority)
-		const featuredPhotos = await req.prisma.photo.findMany({
-			where: { 
-				featured: true, 
-				siteSlug: siteSlug 
-			},
-			orderBy: { createdAt: 'desc' }
-		});
+	const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
+	const baseTitle = config?.title || 'Memorial Site';
+	const title = `${baseTitle} - Best Moments`;
 
-		// Get Best Moments that are NOT featured
-		const bestPhotos = await req.prisma.photo.findMany({
-			where: { 
-				bestMoment: true,
-				featured: false,        // avoid duplicates
-				siteSlug: siteSlug 
-			},
-			orderBy: { createdAt: 'desc' }
-		});
+	// Featured first, then bestMoment (non-featured)
+  	const featured = await req.prisma.photo.findMany({
+    	where: { featured: true, siteSlug },
+		orderBy: { createdAt: 'desc' }
+	});
 
-		// Shuffle both arrays
-		const shuffledFeatured = shuffleArray(featuredPhotos);
-		const shuffledBest = shuffleArray(bestPhotos);
-		const featuredImages = shuffledFeatured.map(photo => ({
-			id: photo.id,
-			src: photo.image,
-			caption: photo.caption || '',
-			featured: true,
-			bestMoment: photo.bestMoment,
-			home: photo.home || false
-		}));
-		const bestImages = shuffledBest.map(photo => ({
-			id: photo.id,
-			src: photo.image,
-			caption: photo.caption || '',
-			featured: false,
-			bestMoment: true,
-			home: photo.home || false
-		}));
-		const allImages = [...featuredImages, ...bestImages];
+  	const best = await req.prisma.photo.findMany({
+    	where: { bestMoment: true, featured: false, siteSlug },
+		orderBy: { createdAt: 'desc' }
+	});
 
-		res.render('pictures', {
-			headerTitle: baseTitle,                    // ← for the header
-			title: `${baseTitle} - Best Moments`,      // ← for the page <h2>
-			googleAnalyticsId: config.googleAnalyticsId,
-			allImages,			// for load-more and sorting
-			images: allImages,	// fallback for normal logic
-			featuredImages,		// special layout
-			bestImages,			// normal gallery
-			sort: 'random',
-			searchQuery: '',
-			isAdmin: !!req.session?.isAdmin,
-			pageSize: DEFAULT_PAGE_SIZE,
-			isMobile: false
+	const all = [...shuffleArray(featured), ...shuffleArray(best)];
+	const total = all.length;
+	const start = (page - 1) * pageSize;
+	const pagePhotos = all.slice(start, start + pageSize);
+
+	const images = pagePhotos.map(photo => ({
+		id: photo.id,
+		src: photo.image,
+		caption: photo.caption || '',
+    	home: photo.home || false,
+		bestMoment: photo.bestMoment,
+    	featured: photo.featured
+	}));
+  	const hasMore = page * pageSize < total;
+
+  	if (req.query.page || req.xhr || req.headers.accept?.includes('application/json')) {
+    	return res.json({
+			success: true,
+			images,
+			page,
+			pageSize,
+			hasMore,
+			nextPage: hasMore ? page + 1 : null,
+			title,
+			isAdmin: !!req.session?.isAdmin
 		});
-	} catch (error) {
-		console.error('Best moments error:', error);
-		return sendError(res, 500, 'Error loading best moments');
 	}
+
+	res.render('pictures', {
+		headerTitle: baseTitle,
+		title,
+		googleAnalyticsId: config?.googleAnalyticsId,
+		images,
+		featuredImages: [],      // we flattened them
+		bestImages: [],
+		sort: 'random',
+		searchQuery: '',
+		isAdmin: !!req.session?.isAdmin,
+		pageSize,
+		isMobile: false,
+		hasMore,
+		nextPage: hasMore ? 2 : null
+	});
 }));
 
 // ====================== VIDEOS ======================
 router.get('/videos', asyncHandler(async (req, res) => {
-	const mobile = isMobile(req);
-	const initialLimit = mobile ? MOBILE_VIDEO_LIMIT : DESKTOP_VIDEO_LIMIT;
 	const siteSlug = req.siteSlug;
-	const showBestOnly = req.query.best === 'true';
+	const mobile = isMobile(req);
+	const pageSize = mobile ? MOBILE_VIDEO_LIMIT : DESKTOP_VIDEO_LIMIT;
+	const page = Math.max(parseInt(req.query.page) || 1, 1);
 	const sort = req.query.sort || 'random';
+	const showBestOnly = req.query.best === 'true';
 
-	try {
-		const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
-		const baseTitle = config?.title || 'Memorial Site';
-		const whereClause = { siteSlug };
-		if (showBestOnly) { whereClause.bestMoment = true; }
-		let dbVideos = [];
+	const config = await req.prisma.siteConfig.findFirst({ where: { siteSlug } });
+	const baseTitle = config?.title || 'Memorial Site';
+	const title = showBestOnly 
+		? `${baseTitle} - Video Best Moments` 
+		: `${baseTitle} - Videos`;
 
-		if (sort === 'chrono') {
-			dbVideos = await req.prisma.video.findMany({
-				where: whereClause,
-				orderBy: { takenAt: 'desc' }
-			});
-		} else if (sort === 'alpha') {
-			dbVideos = await req.prisma.video.findMany({
-				where: whereClause,
-				orderBy: { title: 'asc' }
-			});
-		} else { // Random
-			dbVideos = await req.prisma.video.findMany({
-				where: whereClause,
-				orderBy: { createdAt: 'desc' }
-			});
-			dbVideos = shuffleArray(dbVideos);
-		}
+	const where = { siteSlug };
+	if (showBestOnly){ where.bestMoment = true; }
 
-		// Limit initial load on mobile
-		const videos = dbVideos.slice(0, initialLimit).map(v => ({
-			id: v.id,
-			youtubeId: v.youtubeId,
-			title: v.title,
-			description: v.description,
-			thumbnail: v.thumbnail,
-			takenAt: v.takenAt,
-			bestMoment: v.bestMoment
-		}));
+	let orderBy = [{ createdAt: 'desc' }];
+	if (sort === 'chrono'){ orderBy = [{ takenAt: 'desc' }]; }
+	if (sort === 'alpha'){ orderBy = [{ title: 'asc' }]; }
 
-		// Dynamic page title
-		const pageTitle = showBestOnly 
-			? `${baseTitle} - Video Best Moments` 
-			: `${baseTitle} - Videos`;
+	const isRandom = sort === 'random';
+	let videos;
+	let total = 0;
 
-		// If AJAX sort/filter request
-		if (req.query.sort || req.query.best) {
-			return res.json({
-				success: true,
-				videos,
-				sort,
-				showBestOnly,
-				isMobile: mobile
-			});
-		}
+	if (isRandom) {
+		total = await req.prisma.video.count({ where });
+		videos = await req.prisma.$queryRaw`
+			SELECT * FROM "Video"
+			WHERE "siteSlug" = ${siteSlug}
+			${showBestOnly ? Prisma.sql`AND "bestMoment" = true` : Prisma.empty}
+			ORDER BY RANDOM()
+			LIMIT ${pageSize}
+			OFFSET ${(page - 1) * pageSize}
+		`;
+	} else {
+		total = await req.prisma.video.count({ where });
+		videos = await req.prisma.video.findMany({
+			where,
+			orderBy,
+			take: pageSize,
+			skip: (page - 1) * pageSize
+		});
+	}
 
-		// Normal page load
-		res.render('videos', {
-			headerTitle: baseTitle,
-			title: pageTitle,
-			googleAnalyticsId: config.googleAnalyticsId,
-			videos,
-			allVideos: dbVideos,           // full list for Load More
+	const mapped = videos.map(v => ({
+		id: v.id,
+		youtubeId: v.youtubeId,
+		title: v.title,
+		description: v.description,
+		thumbnail: v.thumbnail,
+		takenAt: v.takenAt,
+		bestMoment: v.bestMoment
+	}));
+
+	const hasMore = page * pageSize < total;
+
+	if (req.query.page || req.query.sort || req.query.best || req.xhr || req.headers.accept?.includes('application/json')) {
+		return res.json({
+			success: true,
+			videos: mapped,
+			page,
+			pageSize,
+			hasMore,
+			nextPage: hasMore ? page + 1 : null,
 			sort,
-			showBestOnly: !!showBestOnly,
+			showBestOnly,
 			isMobile: mobile
 		});
-
-	} catch (err) {
-		console.error('Videos route error:', err);
-		return sendError(res, 500, 'Error loading videos');
 	}
+
+	res.render('videos', {
+		headerTitle: baseTitle,
+		title,
+		googleAnalyticsId: config?.googleAnalyticsId,
+		videos: mapped,
+		sort,
+		showBestOnly: !!showBestOnly,
+		isMobile: mobile,
+		hasMore,
+		nextPage: hasMore ? 2 : null
+	});
 }));
 
 // Admin: Update caption (instant)

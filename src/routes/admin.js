@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import ExifReader from 'exifreader';
 import express from 'express';
 import multer from 'multer';
@@ -11,9 +12,19 @@ import sharp from 'sharp';
 
 import asyncHandler from '../middleware/asyncHandler.js';
 import { isAuthenticated } from '../middleware/auth.js';
+import { invalidateConfig } from '../utils/configCache.js';
 import { sendError } from '../utils/errors.js';
 
 const router = express.Router();
+
+const r2Client = new S3Client({
+	region: 'auto',
+	endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+	credentials: {
+		accessKeyId: process.env.R2_ACCESS_KEY_ID,
+		secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+	},
+});
 
 // ====================== MULTER SETUP ======================
 
@@ -112,115 +123,128 @@ router.post('/photos/upload', (req, res, next) => {
 	if (files.length === 0) {
 		return sendError(res, 400, 'No files uploaded');
 	}
-	let success = 0;
-	let duplicates = 0;
-	const failures = [];
 
-	for (const file of files) {
+	const CONCURRENCY = 4;
+
+	async function processFile(file) {
+		const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+
+		// Check for duplicate
+		const existing = await req.prisma.photo.findUnique({
+			where: {
+				hash_siteSlug: { hash, siteSlug }
+			}
+		});
+		if (existing) return { type: 'duplicate' };
+
+		// Upload + get correct dimensions
+		const { url: imageUrl, width, height } = await uploadToR2(
+			file.buffer,
+			file.originalname,
+			hash,
+			siteSlug
+		);
+
+		const baseName = path.basename(file.originalname, path.extname(file.originalname));
+
+		// Extract date from EXIF first, then fallback to filename
+		let takenAt = null;
+		let takenAtSource = null;
+
 		try {
-			const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
-			// Check for duplicate WITHIN THIS SITE (siteSlug-specific)
-			const existing = await req.prisma.photo.findUnique({
-				where: { 
-					hash_siteSlug: {   // composite unique key
-						hash: hash,
-						siteSlug: siteSlug
-					}
+			const exif = await ExifReader.load(file.buffer);
+			let exifDate = exif.DateTimeOriginal?.value ||
+                            exif.CreateDate?.value ||
+                            exif.DateTime?.value;
+			if (exifDate) {
+				if (Array.isArray(exifDate)){ exifDate = exifDate[0]; }
+				const dateStr = String(exifDate).replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
+				takenAt = new Date(dateStr);
+				if (!isNaN(takenAt.getTime())) {
+					takenAtSource = 'exif';
+				} else {
+					takenAt = null;
 				}
-			});
-			if (existing) {
-				duplicates++;
-				continue;
+			}
+		} catch (e) {
+			console.warn('exifError:', e);
+		}
+
+		if (!takenAt) {
+			const filename = file.originalname.toLowerCase();
+
+			// Pattern 1: YYYYMMDD
+			let match = filename.match(/(\d{4})(\d{2})(\d{2})/);
+			if (match) {
+				takenAt = new Date(`${match[1]}-${match[2]}-${match[3]}`);
+				if (!isNaN(takenAt.getTime())){ takenAtSource = 'filename'; }
 			}
 
-			// Get image dimensions
-			const metadata = await sharp(file.buffer).metadata();
-
-			// Upload to Cloudflare R2
-			const imageUrl = await uploadToR2(file.buffer, file.originalname, hash, siteSlug);
-
-			const baseName = path.basename(file.originalname, path.extname(file.originalname));
-
-			// Extract date from EXIF first, then fallback to filename
-			let takenAt = null;
-			let takenAtSource = null;
-			try {
-				const exif = await ExifReader.load(file.buffer);
-				let exifDate = exif.DateTimeOriginal?.value ||
-								exif.CreateDate?.value ||
-								exif.DateTime?.value;
-				if (exifDate) {
-					if (Array.isArray(exifDate)) { exifDate = exifDate[0]; }
-					const dateStr = String(exifDate).replace(/(\d{4})[:-](\d{2})[:-](\d{2})/, '$1-$2-$3');
-					takenAt = new Date(dateStr);
-					if (!isNaN(takenAt.getTime())) {
-						takenAtSource = 'exif';        // ← (e)
-					} else {
-						takenAt = null;
-					}
-				}
-			} catch (e) { 
-				console.warn('exifError:', e);
-			}
-
+			// Pattern 2: DDmmmYYYY
 			if (!takenAt) {
-				const filename = file.originalname.toLowerCase();
-
-				// Pattern 1: YYYYMMDD (e.g. 20210524)
-				let match = filename.match(/(\d{4})(\d{2})(\d{2})/);
+				match = filename.match(/(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|march|april|june|july)(\d{2,4})/);
 				if (match) {
-					takenAt = new Date(`${match[1]}-${match[2]}-${match[3]}`);
-					if (!isNaN(takenAt.getTime())){ takenAtSource = 'filename'; }
-				}
-
-				// Pattern 2: DDmmmYYYY or DDMMMMYYYY (e.g. 24may2021, 24June2021, 15April2023)
-				if (!takenAt) {
-					// This regex matches day + month name (3 or more letters) + year
-					match = filename.match(/(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|march|april|june|july)(\d{2,4})/);
-					if (match) {
-						const day = match[1].padStart(2, '0');
-						const monthStr = match[2];
-						let year = match[3];
-						if (year.length === 2){ year = '20' + year; }
-						const monthMap = {
-							'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06', 
-							'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12',
-							'march': '03', 'april': '04', 'june': '06', 'july': '07' 
-						};
-						const month = monthMap[monthStr];
-						if (month) {
-							takenAt = new Date(`${year}-${month}-${day}`);
-							if (!isNaN(takenAt.getTime())) {
-								takenAtSource = 'filename';
-							}
+					const day = match[1].padStart(2, '0');
+					const monthStr = match[2];
+					let year = match[3];
+					if (year.length === 2){ year = '20' + year; }
+					const monthMap = {
+						'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+						'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12',
+						'march': '03', 'april': '04', 'june': '06', 'july': '07'
+					};
+					const month = monthMap[monthStr];
+					if (month) {
+						takenAt = new Date(`${year}-${month}-${day}`);
+						if (!isNaN(takenAt.getTime())) {
+							takenAtSource = 'filename';
 						}
 					}
 				}
 			}
-
-			await req.prisma.photo.create({
-				data: {
-					siteSlug,
-					image: imageUrl,
-					originalFilename: file.originalname,
-					hash,
-					width: metadata.width,
-					height: metadata.height,
-					caption: baseName,
-					featured: false,
-					bestMoment: false,
-					takenAt,
-					takenAtSource
-				}
-			});
-			success++;
-		} catch (err) {
-			console.error(`Failed to process ${file.originalname}:`, err);
-		    failures.push(file.originalname);
 		}
+
+		await req.prisma.photo.create({
+			data: {
+				siteSlug,
+				image: imageUrl,
+				originalFilename: file.originalname,
+				hash,
+				width,
+				height,
+				caption: baseName,
+				featured: false,
+				bestMoment: false,
+				takenAt,
+				takenAtSource
+			}
+		});
+
+		return { type: 'success' };
 	}
-	const message = `Upload complete: ${success} photos added.` + 
-				(duplicates ? ` ${duplicates} duplicate(s) skipped.` : '');
+
+	// Bounded concurrency
+	const results = [];
+	for (let i = 0; i < files.length; i += CONCURRENCY) {
+		const chunk = files.slice(i, i + CONCURRENCY);
+		const chunkResults = await Promise.all(
+			chunk.map(file =>
+				processFile(file).catch(err => {
+					console.error(`Failed to process ${file.originalname}:`, err);
+					return { type: 'failure', name: file.originalname };
+				})
+			)
+		);
+		results.push(...chunkResults);
+	}
+
+	const success = results.filter(r => r.type === 'success').length;
+	const duplicates = results.filter(r => r.type === 'duplicate').length;
+	const failures = results.filter(r => r.type === 'failure').map(r => r.name);
+
+	let message = `Upload complete: ${success} photos added.`;
+	if (duplicates) message += ` ${duplicates} duplicate(s) skipped.`;
+	if (failures.length) message += ` Failed: ${failures.join(', ')}`;
 
 	res.redirect(`/admin/photos?message=${encodeURIComponent(message)}`);
 }));
@@ -235,7 +259,7 @@ router.post('/photos/delete/:id', asyncHandler(async (req, res) => {
 			where: { id: photoId }
 		});
 		if (!photo || photo.siteSlug !== siteSlug) {
-			return sendError(res, 404, 'Photo not found');
+			return deleteFromR2(res, 404, 'Photo not found');
 		}
 
 		// Delete from Cloudflare R2
@@ -359,17 +383,32 @@ router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 
 			const playlistRes = await fetch(playlistUrl);
 			const playlistData = await playlistRes.json();
-			if (!playlistData.items) break;
+			if (!playlistData.items){ break; }
+
+			// Collect up to 50 video IDs from this page
+			const videoIds = playlistData.items
+				.map(item => item.snippet.resourceId.videoId)
+				.filter(Boolean);
+
+			if (videoIds.length === 0) {
+				nextPageToken = playlistData.nextPageToken;
+				continue;
+			}
+
+			// ONE batched call for the whole page (instead of 50 individual calls)
+			const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,recordingDetails&id=${videoIds.join(',')}&key=${apiKey}`;
+			const videoRes = await fetch(videoUrl);
+			const videoData = await videoRes.json();
+			const videoMap = new Map(
+				(videoData.items || []).map(v => [v.id, v])
+			);
 
 			for (const item of playlistData.items) {
 				const youtubeId = item.snippet.resourceId.videoId;
 
-				// === SECOND CALL: Get detailed video info including recordingDate ===
-				const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,recordingDetails&id=${youtubeId}&key=${apiKey}`;
-				const videoRes = await fetch(videoUrl);
-				const videoData = await videoRes.json();
-				const snippet = videoData.items?.[0]?.snippet || item.snippet;
-				const recordingDetails = videoData.items?.[0]?.recordingDetails || {};
+				const detailed = videoMap.get(youtubeId);
+				const snippet = detailed?.snippet || item.snippet;
+				const recordingDetails = detailed?.recordingDetails || {};
 
 				const title = snippet.title;
 				const description = snippet.description || null;
@@ -381,7 +420,8 @@ router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 					takenAt = new Date(snippet.takenAt);
 				}
 
-				const thumbnail = snippet.thumbnails?.maxres?.url || 
+				const thumbnail = 
+					snippet.thumbnails?.maxres?.url || 
 					snippet.thumbnails?.high?.url ||
 					snippet.thumbnails?.medium?.url ||
 					`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
@@ -389,10 +429,7 @@ router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 				// Check if already exists for THIS site
 				const existing = await req.prisma.video.findUnique({
 					where: { 
-						youtubeId_siteSlug: {   // composite unique for videos
-							youtubeId: youtubeId,
-							siteSlug: siteSlug
-						}
+						youtubeId_siteSlug: { youtubeId, siteSlug }
 					}
 				});
 				if (existing) {
@@ -402,7 +439,7 @@ router.post('/videos/import-playlist', asyncHandler(async (req, res) => {
 					const dateChanged = existing.takenAt?.getTime() !== takenAt?.getTime();
 					if (titleChanged || descChanged || dateChanged) {
 						await req.prisma.video.update({
-							where: { youtubeId },
+							where: { id: existing.id },   // safer than where: { youtubeId }
 							data: { title, description, thumbnail, takenAt }
 						});
 						updated++;
@@ -538,6 +575,12 @@ router.post('/update', asyncHandler(async (req, res) => {
 			}
 		});
 
+		// Invalidate cache so the new values are picked up immediately
+		invalidateConfig(currentSlug);
+		if (finalSlug !== currentSlug) {
+			invalidateConfig(finalSlug);
+		}
+
 		// Only update .env on first setup
 		if (
 			process.env.NODE_ENV !== 'production' &&
@@ -555,69 +598,72 @@ router.post('/update', asyncHandler(async (req, res) => {
 // ====================== R2 HELPERS ======================
 
 async function uploadToR2(buffer, originalName, hash, siteSlug) {
-	const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-	let finalBuffer = buffer;
+	const ext = path.extname(originalName).toLowerCase() || '.jpg';
 	let contentType = 'image/jpeg';
-	const ext = path.extname(originalName).toLowerCase();
+	let width = null;
+	let height = null;
+	let finalBuffer = buffer;
 	try {
-		const sharp = (await import('sharp')).default;
-		let pipeline = sharp(buffer)
-			.rotate()                    // Auto-fix orientation from phones
-			.resize(2500, 2500, {        // Resize ANY image > 2500px
+		const pipeline = sharp(buffer)
+			.rotate() // auto-orient
+			.resize(2500, 2500, {
 				fit: 'inside',
 				withoutEnlargement: true
 			});
 
-		// Optimize if > 3MB or common large formats
-		if (buffer.length > 3 * 1024 * 1024 || ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-			pipeline = pipeline.jpeg({
-				quality: 82,             // Good quality / size balance
-				mozjpeg: true
-			});
+		// Get correct dimensions AFTER rotate + resize
+		const metadata = await pipeline.metadata();
+		width = metadata.width;
+		height = metadata.height;
+
+		// Optimize
+		if (
+			buffer.length > 3 * 1024 * 1024 ||
+			['.jpg', '.jpeg', '.png', '.webp'].includes(ext)
+		) {
+			finalBuffer = await pipeline
+				.jpeg({ quality: 82, mozjpeg: true })
+				.toBuffer();
 			contentType = 'image/jpeg';
+		} else {
+			finalBuffer = await pipeline.toBuffer();
 		}
 
-		finalBuffer = await pipeline.toBuffer();
 		if (finalBuffer.length !== buffer.length) {
-			console.warn(`✅ Optimized ${originalName}: ${Math.round(buffer.length/1024)}KB → ${Math.round(finalBuffer.length/1024)}KB`);
+			console.warn(
+				`✅ Optimized ${originalName}: ${Math.round(buffer.length / 1024)}KB → ${Math.round(finalBuffer.length / 1024)}KB`
+			);
 		}
 	} catch (err) {
 		console.warn('Image optimization skipped for', originalName, err.message);
-		// Fall back to original buffer if Sharp fails
+		// fall back to original buffer + try to get basic metadata
+		try {
+			const meta = await sharp(buffer).metadata();
+			width = meta.width;
+			height = meta.height;
+		} catch {}
 	}
 
-	// ====================== Upload to R2 ======================
-	const client = new S3Client({
-		region: 'auto',
-		endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-		credentials: {
-			accessKeyId: process.env.R2_ACCESS_KEY_ID,
-			secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-		},
-	});
 	const key = `${siteSlug}/images/${hash.slice(0, 12)}${ext}`;
-	await client.send(new PutObjectCommand({
-		Bucket: process.env.R2_BUCKET_NAME,
-		Key: key,
-		Body: finalBuffer,
-		ContentType: contentType,
-	}));
+	await r2Client.send(
+		new PutObjectCommand({
+			Bucket: process.env.R2_BUCKET_NAME,
+			Key: key,
+			Body: finalBuffer,
+			ContentType: contentType
+		})
+	);
 
-	// Return public URL
-	return `${process.env.R2_PUBLIC_DOMAIN}/${key}`;
+	return {
+		url: `${process.env.R2_PUBLIC_DOMAIN}/${key}`,
+		width,
+		height
+	};
 }
 
 async function deleteFromR2(imageUrl) {
-	const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+	const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
 	const { URL } = await import('url');
-	const client = new S3Client({
-		region: 'auto',
-		endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-		credentials: {
-			accessKeyId: process.env.R2_ACCESS_KEY_ID,
-			secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-		},
-	});
 
 	// parse URL
 	let key;
@@ -628,9 +674,9 @@ async function deleteFromR2(imageUrl) {
 		console.warn('Invalid image URL for deletion:', imageUrl, '::', e);
 		return; // can't parse, skip deletion
 	}
-	await client.send(new DeleteObjectCommand({
+	await r2Client.send(new DeleteObjectCommand({
 		Bucket: process.env.R2_BUCKET_NAME,
-		Key: key,
+		Key: key
 	}));
 	// console.log(`🗑️ Deleted from R2: ${key}`);
 }

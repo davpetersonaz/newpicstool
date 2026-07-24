@@ -11,39 +11,20 @@
 <body>
 	<%- include('partials/header') %>
 	<main>
-		<% // === DEBUG / DEFENSIVE CHECKS ===
-		function verifyVariable(variable, name) {
-			if (typeof variable === 'undefined') {
-				console.error(`ERROR in pictures.ejs: '${name}' is undefined`);
-				return false;
-			}
-			return true;
-		}
-
-		// Verify critical variables
-		verifyVariable(allImages, 'allImages');
-		verifyVariable(images, 'images');
-		verifyVariable(featuredImages, 'featuredImages');
-		verifyVariable(bestImages, 'bestImages');
-		verifyVariable(sort, 'sort');
-		verifyVariable(title, 'title');
-		verifyVariable(searchQuery, 'searchQuery');
-		verifyVariable(isAdmin, 'isAdmin');
-		verifyVariable(pageSize, 'pageSize');
+		<% 
+			const safeImages = typeof images !== 'undefined' ? images : [];
+			const safeFeatured = typeof featuredImages !== 'undefined' ? featuredImages : [];
+			const safeBest = typeof bestImages !== 'undefined' ? bestImages : [];
+			const isBestPage = safeFeatured.length > 0 || safeBest.length > 0;
 		%>
 
 		<% if (searchQuery) { %>
 			<h2><%= title %></h2>
-			<% if (allImages.length === 0) { %>
+			<% if (safeImages.length === 0) { %>
 				<p>No images found for "<%= searchQuery %>".</p>
-			<% } else { %>
-				<p>Found <%= allImages.length %> image<%= allImages.length !== 1 ? 's' : '' %>.</p>
 			<% } %>
 		<% } else if (title) { %>
 			<h2><%= title %></h2>
-			<% if (allImages.length > 0) { %>
-				<p><%= allImages.length %> photos</p>
-			<% } %>
 		<% } %>
 		
 		<% if (featuredImages.length === 0 && bestImages.length === 0) { %>
@@ -185,10 +166,10 @@
 			<% } %>
 		</div>
 
-		<% if (featuredImages.length === 0 && bestImages.length === 0 && allImages.length > images.length) { %>
+		<% if (!isBestPage && typeof hasMore !== 'undefined' && hasMore) { %>
 			<div class="load-more-container" style="text-align:center; margin: 60px 0 100px;">
 				<button id="load-more-btn" class="btn btn-primary" onclick="loadMorePhotos()">
-					Load More Photos (<%= allImages.length - images.length %> remaining)
+					Load More Photos
 				</button>
 			</div>
 		<% } %>
@@ -200,260 +181,181 @@
 		</div>
 	</main>
 
-<script id="gallery-data" type="application/json">
-<%- JSON.stringify({
-    allPhotos: allImages || featuredImages || bestImages || images || [],
-    initialCount: images.length || allImages.length,
-    pageSize: pageSize || 32,
-    isAdmin: !!isAdmin
-}) %>
-</script>
+	<script id="gallery-config" type="application/json">
+		<%- JSON.stringify({
+			hasMore: typeof hasMore !== 'undefined' ? !!hasMore : false,
+			isAdmin: !!isAdmin,
+			pageSize: pageSize || 50
+		}) %>
+	</script>
 
 	<script>
-		// Parse data safely
-		let allPhotos = [];
-		let displayedCount = 0;
-		let pageSize = 32;
+		// ===== State =====
+		let currentPage = 1;
+		let hasMore = false;
+		let isLoading = false;
 		let isAdminUser = false;
 
 		try {
-			const rawData = document.getElementById('gallery-data').textContent.trim();
-			const parsed = JSON.parse(rawData);
-
-			allPhotos = parsed.allPhotos || [];
-			displayedCount = parsed.initialCount || 0;
-		    pageSize = parsed.pageSize || 32;
-		    isAdminUser = !!parsed.isAdmin;
+			const config = JSON.parse(document.getElementById('gallery-config').textContent);
+			hasMore = config.hasMore;
+			isAdminUser = config.isAdmin;
 		} catch (e) {
-			console.error("Failed to parse gallery data:", e);
+			console.error('Failed to parse gallery config', e);
 		}
 
-		// ==================== LOAD MORE ====================
-		function loadMorePhotos() {
+		// ===== LOAD MORE (real server-side fetch) =====
+		async function loadMorePhotos() {
+			if (!hasMore || isLoading) return;
+
 			const btn = document.getElementById('load-more-btn');
-			if (!btn){ return; }
-
-			btn.innerHTML = 'Loading...';
-			btn.disabled = true;
-			const nextBatch = allPhotos.slice(displayedCount, displayedCount + pageSize);
-			const gallery = document.getElementById('gallery-container');
-			nextBatch.forEach(image => {
-				const item = document.createElement('div');
-				item.className = 'gallery-item';
-				item.dataset.id = image.id;
-				item.innerHTML = `
-					<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
-					<div class="caption" onclick="editCaption(this)" title="Click to edit">
-						${image.caption || 'No caption'}
-					</div>
-				`;
-				if (isAdminUser) {
-					item.innerHTML += `
-						<div class="admin-controls">
-							<label class="feature-label">
-								<input type="checkbox" ${image.home ? 'checked' : ''} 
-									onchange="toggleHome(this, ${image.id})">
-								Home
-							</label>
-							<label class="feature-label">
-								<input type="checkbox" ${image.bestMoment ? 'checked' : ''} 
-									onchange="toggleBest(this, ${image.id})">
-								Best
-							</label>
-							<label class="feature-label">
-								<input type="checkbox" ${image.featured ? 'checked' : ''} 
-									onchange="toggleFeature(this, ${image.id})">
-								Featured
-							</label>
-							<button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">
-								🗑️
-							</button>
-						</div>
-					`;
-				}
-
-				gallery.appendChild(item);
-			});
-
-			displayedCount += nextBatch.length;
-			if (displayedCount >= allPhotos.length) {
-				btn.style.display = 'none';
-			} else {
-				btn.innerHTML = `Load More Photos (${allPhotos.length - displayedCount} remaining)`;
-				btn.disabled = false;
+			if (btn) {
+				btn.innerHTML = 'Loading...';
+				btn.disabled = true;
 			}
-		}
-
-		// Make it globally available for onclick
-		window.loadMorePhotos = loadMorePhotos;
-
-		async function sortGallery(newSort) {
-			const url = new URL(window.location);
-			url.searchParams.set('sort', newSort);
+			isLoading = true;
 
 			try {
-				const response = await fetch(url.toString(), {
-					headers: { 'Accept': 'application/json' }   // Force JSON response
+				const url = new URL(window.location.href);
+				url.searchParams.set('page', currentPage + 1);
+
+				const res = await fetch(url.toString(), {
+					headers: { 'Accept': 'application/json' }
 				});
-				if (!response.ok) throw new Error('Network error');
+				const data = await res.json();
 
-				const data = await response.json();
-				if (data.success) {
+				if (data.success && data.images?.length) {
 					const gallery = document.getElementById('gallery-container');
-					gallery.innerHTML = '';
 
-					// Render the first page of results
 					data.images.forEach(image => {
 						const item = document.createElement('div');
 						item.className = 'gallery-item';
 						item.dataset.id = image.id;
+
 						item.innerHTML = `
-							<img src="${image.src}" alt="${image.caption}" loading="lazy" class="gallery-image">
+							<img src="${image.src}" alt="${image.caption || ''}" loading="lazy" class="gallery-image">
 							<div class="caption" onclick="editCaption(this)" title="Click to edit">
 								${image.caption || 'No caption'}
 							</div>
 						`;
-						if (data.isAdmin) {
+
+						if (isAdminUser) {
 							item.innerHTML += `
 								<div class="admin-controls">
 									<label class="feature-label">
-										<input type="checkbox" ${image.home ? 'checked' : ''} 
-											onchange="toggleHome(this, ${image.id})">
-										Home
+										<input type="checkbox" ${image.home ? 'checked' : ''} onchange="toggleHome(this, ${image.id})"> Home
 									</label>
 									<label class="feature-label">
-										<input type="checkbox" ${image.bestMoment ? 'checked' : ''} 
-											onchange="toggleBest(this, ${image.id})">
-										Best
+										<input type="checkbox" ${image.bestMoment ? 'checked' : ''} onchange="toggleBest(this, ${image.id})"> Best
 									</label>
 									<label class="feature-label">
-										<input type="checkbox" ${image.featured ? 'checked' : ''} 
-											onchange="toggleFeature(this, ${image.id})">
-										Featured
+										<input type="checkbox" ${image.featured ? 'checked' : ''} onchange="toggleFeature(this, ${image.id})"> Featured
 									</label>
-									<button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">
-										🗑️
-									</button>
+									<button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">🗑️</button>
 								</div>
 							`;
 						}
+
 						gallery.appendChild(item);
 					});
 
-					// === RESET PAGING FOR NEW SORT ===
-					allPhotos = data.allImages || data.images || [];
-					displayedCount = data.images ? data.images.length : 0;
+					currentPage = data.page;
+					hasMore = data.hasMore;
 
-					// Update active sort button
-					document.querySelectorAll('.sort-button').forEach(btn => {
-	                    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(newSort));
-					});
-
-					// Show/hide Load More button
-					const loadMoreBtn = document.getElementById('load-more-btn');
-					if (loadMoreBtn) {
-						if (allPhotos.length > displayedCount) {
-							loadMoreBtn.style.display = 'inline-block';
-							loadMoreBtn.innerHTML = `Load More Photos (${allPhotos.length - displayedCount} remaining)`;
+					if (btn) {
+						if (!hasMore) {
+							btn.style.display = 'none';
 						} else {
-							loadMoreBtn.style.display = 'none';
+							btn.innerHTML = 'Load More Photos';
+							btn.disabled = false;
 						}
 					}
 				}
 			} catch (err) {
-				console.error('Sort failed:', err);
-				window.location.href = url.toString(); // fallback to full page reload
+				console.error('Load more failed:', err);
+				if (btn) {
+					btn.innerHTML = 'Load More Photos';
+					btn.disabled = false;
+				}
+			} finally {
+				isLoading = false;
 			}
 		}
 
-		// Admin functions
-		async function editCaption(el) {
-			const currentText = el.textContent.trim();
-			const input = document.createElement('input');
-			input.type = 'text';
-			input.value = currentText;
-			input.style.width = '100%';
-			el.replaceWith(input);
-			input.focus();
-			input.select();
+		// ===== SORT =====
+		async function sortGallery(newSort) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('sort', newSort);
+			url.searchParams.delete('page'); // always start from page 1
 
-			const save = async () => {
-				const newCaption = input.value.trim();
-				const item = input.closest('.gallery-item');
-				const photoId = item ? item.dataset.id : null;
+			try {
+				const res = await fetch(url.toString(), {
+					headers: { 'Accept': 'application/json' }
+				});
+				const data = await res.json();
 
-				if (photoId && newCaption !== currentText) {
-					try {
-						await fetch(`/api/photo/${photoId}/caption`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ caption: newCaption })
-						});
-					} catch (e) {
-						console.error('Failed to save caption');
+				if (data.success) {
+					const gallery = document.getElementById('gallery-container');
+					gallery.innerHTML = '';
+
+					data.images.forEach(image => {
+						const item = document.createElement('div');
+						item.className = 'gallery-item';
+						item.dataset.id = image.id;
+
+						item.innerHTML = `
+							<img src="${image.src}" alt="${image.caption || ''}" loading="lazy" class="gallery-image">
+							<div class="caption" onclick="editCaption(this)" title="Click to edit">
+								${image.caption || 'No caption'}
+							</div>
+						`;
+
+						if (data.isAdmin) {
+							item.innerHTML += `
+								<div class="admin-controls">
+									<label class="feature-label">
+										<input type="checkbox" ${image.home ? 'checked' : ''} onchange="toggleHome(this, ${image.id})"> Home
+									</label>
+									<label class="feature-label">
+										<input type="checkbox" ${image.bestMoment ? 'checked' : ''} onchange="toggleBest(this, ${image.id})"> Best
+									</label>
+									<label class="feature-label">
+										<input type="checkbox" ${image.featured ? 'checked' : ''} onchange="toggleFeature(this, ${image.id})"> Featured
+									</label>
+									<button class="delete-overlay" onclick="deletePhoto(this)" data-id="${image.id}">🗑️</button>
+								</div>
+							`;
+						}
+
+						gallery.appendChild(item);
+					});
+
+					// Reset state
+					currentPage = 1;
+					hasMore = data.hasMore;
+
+					// Update active button
+					document.querySelectorAll('.sort-button').forEach(btn => {
+						btn.classList.toggle('active', btn.textContent.toLowerCase().includes(newSort));
+					});
+
+					// Show/hide Load More
+					const loadMoreBtn = document.getElementById('load-more-btn');
+					if (loadMoreBtn) {
+						loadMoreBtn.style.display = hasMore ? 'inline-block' : 'none';
+						loadMoreBtn.innerHTML = 'Load More Photos';
+						loadMoreBtn.disabled = false;
 					}
 				}
-
-				const newCaptionDiv = document.createElement('div');
-				newCaptionDiv.className = 'caption';
-				newCaptionDiv.onclick = () => editCaption(newCaptionDiv);
-				newCaptionDiv.title = "Click to edit";
-				newCaptionDiv.textContent = newCaption || 'No caption';
-				input.replaceWith(newCaptionDiv);
-			};
-
-			input.addEventListener('blur', save);
-			input.addEventListener('keydown', e => {
-				if (e.key === 'Enter'){ save(); }
-				if (e.key === 'Escape'){ input.replaceWith(el); }
-			});
+			} catch (err) {
+				console.error('Sort failed:', err);
+				window.location.href = url.toString();
+			}
 		}
 
-		// Lightbox	
-		document.addEventListener('DOMContentLoaded', () => {
-			const modal = document.getElementById('fullscreen-modal');
-			const modalImg = document.getElementById('fullscreen-image');
-			const closeBtn = document.getElementById('close-modal');
-			if (!modal || !modalImg || !closeBtn) return;
-
-			// Use event delegation on the gallery container (catches new images)
-			const galleryContainer = document.getElementById('gallery-container');
-
-			galleryContainer.addEventListener('click', (e) => {
-				// Ignore clicks on admin controls or delete button
-				if (e.target.closest('.admin-controls') || 
-					e.target.closest('.delete-overlay')) {
-					return;
-				}
-
-				// Find the closest gallery image that was clicked
-				const img = e.target.closest('.gallery-image');
-				if (img) {
-					modal.style.display = 'flex';
-					modalImg.src = img.src;
-					modalImg.alt = img.alt || 'Photo';
-				}
-			});
-
-			// Close button
-			closeBtn.addEventListener('click', () => {
-				modal.style.display = 'none';
-			});
-			
-			// Click outside image to close
-			modal.addEventListener('click', (e) => {
-				if (e.target === modal) {
-					modal.style.display = 'none';
-				}
-			});
-
-			// Escape key to close
-			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape' && modal.style.display === 'flex') {
-					modal.style.display = 'none';
-				}
-			});
-		});
+		// Make global for onclick handlers
+		window.loadMorePhotos = loadMorePhotos;
+		window.sortGallery = sortGallery;
 	</script>
 
 	<%- include('partials/admin-scripts') %>

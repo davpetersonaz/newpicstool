@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import DOMAIN_TO_SLUG from '../config/domains.js';
+import { getCachedConfig, setCachedConfig } from '../utils/configCache.js';
 
 const prisma = new PrismaClient();
 
@@ -22,19 +23,24 @@ const siteMiddleware = async (req, res, next) => {
 		// Attach to request
 		req.siteSlug = siteSlug;
 
-		// Fetch or create SiteConfig exactly as you already do
-		let config = await prisma.siteConfig.findUnique({ where: { siteSlug } });
+		// ===== CACHED CONFIG =====
+		let config = getCachedConfig(siteSlug);
+
 		if (!config) {
-			config = await prisma.siteConfig.create({
-				data: {
-					siteSlug,
-					preTitle: 'Welcome to a celebration of the life and times of',
-					title: 'Memorial Site',
-					postTitle: 'R.I.P.',
-					bio: 'In loving memory',
-				},
-			});
-			// console.log(`Created new SiteConfig for: ${siteSlug}`);
+			config = await prisma.siteConfig.findUnique({ where: { siteSlug } });
+			if (!config) {
+				config = await prisma.siteConfig.create({
+					data: {
+						siteSlug,
+						preTitle: 'Welcome to a celebration of the life and times of',
+						title: 'Memorial Site',
+						postTitle: 'R.I.P.',
+						bio: 'In loving memory',
+					},
+				});
+			}
+
+			setCachedConfig(siteSlug, config);
 		}
 
 		req.siteConfig = config;

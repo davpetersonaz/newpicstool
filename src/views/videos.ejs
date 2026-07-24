@@ -18,16 +18,17 @@
 			<!-- Filter + Sorting Buttons -->
 			<div class="sort-buttons">
 				<a href="#" onclick="toggleBestMoments(); return false;" 
-				class="sort-button <%= showBestOnly ? 'active' : '' %>" 
-				id="best-filter-btn">
+					class="sort-button <%= showBestOnly ? 'active' : '' %>" 
+					id="best-filter-btn"
+				>
 					⭐ Best Moments
 				</a>
 				<a href="#" onclick="sortVideos('chrono'); return false;" 
-				class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
+					class="sort-button <%= sort === 'chrono' ? 'active' : '' %>">Sort Chronologically</a>
 				<a href="#" onclick="sortVideos('alpha'); return false;" 
-				class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
+					class="sort-button <%= sort === 'alpha' ? 'active' : '' %>">Sort Alphabetically</a>
 				<a href="#" onclick="sortVideos('random'); return false;" 
-				class="sort-button <%= (!sort || sort === 'random') ? 'active' : '' %>">Shuffle</a>
+					class="sort-button <%= (!sort || sort === 'random') ? 'active' : '' %>">Shuffle</a>
 			</div>
 
 			<% if (videos && videos.length > 0) { %>
@@ -45,16 +46,18 @@
 							</div>
 							<div class="video-info">
 								<% if (video.description) { %>
-									<p class="video-description"><%= video.description.substring(0, 180) %><%= video.description.length > 180 ? '...' : '' %></p>
+                                    <p class="video-description">
+                                        <%= video.description.substring(0, 180) %><%= video.description.length > 180 ? '...' : '' %>
+                                    </p>
 								<% } %>
 							</div>
 						</div>
 					<% }) %>
 				</div>
-                <% if (allVideos && allVideos.length > videos.length) { %>
+                <% if (typeof hasMore !== 'undefined' && hasMore) { %>
                     <div style="text-align: center; margin: 50px 0 30px;">
-                        <button id="load-more-videos" class="btn btn-primary">
-                            Load More Videos (<%= allVideos.length - videos.length %> remaining)
+                        <button id="load-more-videos" class="btn btn-primary" onclick="loadMoreVideos()">
+                            Load More Videos
                         </button>
                     </div>
                 <% } %>
@@ -64,41 +67,39 @@
 		</div>
 	</main>
 
-	<!-- Hidden full data for Load More + initial render -->
-	<script id="video-full-data" type="application/json">
-	<%- JSON.stringify(allVideos || []) %>
-	</script>
-
-	<script id="video-initial-data" type="application/json">
-	<%- JSON.stringify(videos || []) %>
+    <!-- Clean config (no warnings) -->
+    <script id="video-config" type="application/json">
+		<%- JSON.stringify({
+			hasMore: typeof hasMore !== 'undefined' ? !!hasMore : false,
+			showBestOnly: !!showBestOnly,
+			sort: sort || 'random',
+			headerTitle: headerTitle || 'Memorial Site'
+		}) %>
 	</script>
 
 	<script>
-    	// ====================== VIDEO DATA ======================
-        let allVideosData = [];
-    	let displayedCount = 0;
+        // ===== State =====
+        let currentPage = 1;
+        let hasMore = false;
+        let isLoading = false;
+        let isBestOnly = false;
+        let currentSort = 'random';
+        let headerTitle = 'Memorial Site';
 
-        // Load full dataset
 		try {
-	        const fullRaw = document.getElementById('video-full-data').textContent.trim();
-    	    allVideosData = JSON.parse(fullRaw);
+            const config = JSON.parse(document.getElementById('video-config').textContent);
+            hasMore = config.hasMore;
+            isBestOnly = config.showBestOnly;
+            currentSort = config.sort;
+            headerTitle = config.headerTitle;
 		} catch (e) {
-			console.error("Failed to parse full video data");
+            console.error('Failed to parse video config', e);
 		}
 
-		// Load initial videos
-		let currentVideos = [];
-		try {
-			const initialRaw = document.getElementById('video-initial-data').textContent.trim();
-			currentVideos = JSON.parse(initialRaw);
-			displayedCount = currentVideos.length;
-		} catch (e) {
-			console.error("Failed to parse initial videos");
-		}
-
-		function renderVideos(videoList) {
+        // ===== Helper: render a list of videos =====
+        function renderVideos(videoList, append = false) {
 			const container = document.getElementById('video-grid');
-			container.innerHTML = '';
+            if (!append){ container.innerHTML = ''; }
 
 			videoList.forEach(video => {
 				const card = document.createElement('div');
@@ -106,7 +107,7 @@
 				card.innerHTML = `
 					<div class="video-wrapper">
 						<iframe src="https://www.youtube.com/embed/${video.youtubeId}" 
-								title="${video.title}" frameborder="0" 
+                                title="${video.title || ''}" frameborder="0" 
 								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
 								allowfullscreen></iframe>
 					</div>
@@ -118,80 +119,70 @@
 			});
 		}
 
-    	// ====================== LOAD MORE ======================
-        document.getElementById('load-more-videos')?.addEventListener('click', function() {
-            const btn = this;
-            btn.textContent = 'Loading...';
-            btn.disabled = true;
+        // ===== LOAD MORE =====
+        async function loadMoreVideos() {
+            if (!hasMore || isLoading) return;
 
-            const nextBatch = allVideosData.slice(displayedCount, displayedCount + 8);
-            const grid = document.getElementById('video-grid');
-
-            nextBatch.forEach(video => {
-                const card = document.createElement('div');
-                card.className = 'video-card';
-                card.innerHTML = `
-                    <div class="video-wrapper">
-                        <iframe src="https://www.youtube.com/embed/${video.youtubeId}" 
-                                title="${video.title}" frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen></iframe>
-                    </div>
-                    <div class="video-info">
-                        <p class="video-description">${video.description ? video.description.substring(0, 180) + (video.description.length > 180 ? '...' : '') : ''}</p>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-
-            displayedCount += nextBatch.length;
-            if (displayedCount >= allVideosData.length) {
-                btn.style.display = 'none';
-            } else {
-                btn.textContent = `Load More Videos (${allVideosData.length - displayedCount} remaining)`;
-                btn.disabled = false;
+            const btn = document.getElementById('load-more-videos');
+            if (btn) {
+				btn.textContent = 'Loading...';
+				btn.disabled = true;
             }
-        });
+            isLoading = true;
 
-		function updateTitles() {
-		    const baseTitle = '<%= headerTitle || "My Boy Dino" %>';
-	        const newTitle = isBestOnly 
-		        ? `${baseTitle} - Video Best Moments` 
-		        : `${baseTitle} - Videos`;
-			// Browser tab title
-			document.title = newTitle;
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', currentPage + 1);
 
-			// Visible page title (<h2>)
-			const h2 = document.querySelector('main .section h2');
-			if (h2){ h2.textContent = newTitle; }
+                const res = await fetch(url.toString(), {
+                    headers: { 'Accept': 'application/json' }
+	            });
+                const data = await res.json();
+
+                if (data.success && data.videos?.length) {
+                    renderVideos(data.videos, true); // append
+                    currentPage = data.page;
+                    hasMore = data.hasMore;
+                    if (btn) {
+                        if (!hasMore) {
+							btn.style.display = 'none';
+						} else {
+                            btn.textContent = 'Load More Videos';
+			                btn.disabled = false;
+						}
+					}
+                }
+            } catch (err) {
+                console.error('Load more failed:', err);
+                if (btn) {
+                    btn.textContent = 'Load More Videos';
+                    btn.disabled = false;
+                }
+            } finally {
+                isLoading = false;
+            }
 		}
 
-		function updateActiveButtons() {
-			// Best Moments button
-			document.getElementById('best-filter-btn').classList.toggle('active', isBestOnly);
-
-			// Sort buttons
-			document.querySelectorAll('.sort-button').forEach(btn => {
-				const onclick = btn.getAttribute('onclick') || '';
-				if (onclick.includes('chrono')){ btn.classList.toggle('active', currentSort === 'chrono'); }
-				else if (onclick.includes('alpha')){ btn.classList.toggle('active', currentSort === 'alpha'); }
-				else if (onclick.includes('random')){ btn.classList.toggle('active', currentSort === 'random'); }
-			});
-		}
-
+        // ===== SORT =====
 		async function sortVideos(newSort) {
 			currentSort = newSort;
-			const url = new URL(window.location);
+            const url = new URL(window.location.href);
 			url.searchParams.set('sort', newSort);
-			if (isBestOnly){ url.searchParams.set('best', 'true'); }
+            url.searchParams.delete('page');
+            if (isBestOnly){ url.searchParams.set('best', 'true'); }
+            else{ url.searchParams.delete('best'); }
 
 			try {
-				const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-				const data = await response.json();
+                const res = await fetch(url.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await res.json();
 				if (data.success) {
-					currentVideos = data.videos || [];
-					renderVideos(currentVideos);
+                    renderVideos(data.videos || []);
+                    currentPage = 1;
+                    hasMore = data.hasMore;
 					updateActiveButtons();
+                    updateLoadMoreButton();
 				}
 			} catch (err) {
 				console.error(err);
@@ -199,25 +190,30 @@
 			}
 		}
 
+        // ===== BEST MOMENTS TOGGLE =====
 		async function toggleBestMoments() {
 			isBestOnly = !isBestOnly;
-			const url = new URL(window.location);
+            const url = new URL(window.location.href);
+            url.searchParams.delete('page');
 			if (isBestOnly) {
 				url.searchParams.set('best', 'true');
 			} else {
 				url.searchParams.delete('best');
 			}
-			// Keep current sort when toggling filter
 			url.searchParams.set('sort', currentSort);
 
 			try {
-				const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-				const data = await response.json();
+                const res = await fetch(url.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await res.json();
 				if (data.success) {
-					currentVideos = data.videos || [];
-					renderVideos(currentVideos);
+                    renderVideos(data.videos || []);
+                    currentPage = 1;
+                    hasMore = data.hasMore;
 					updateActiveButtons();
 					updateTitles();
+                    updateLoadMoreButton();
 				}
 			} catch (err) {
 				console.error(err);
@@ -225,10 +221,38 @@
 			}
 		}
 
-		// Initial render
-		document.addEventListener('DOMContentLoaded', () => {
-            renderVideos(currentVideos);
+        // ===== UI helpers =====
+        function updateTitles() {
+            const newTitle = isBestOnly 
+                ? `${headerTitle} - Video Best Moments` 
+                : `${headerTitle} - Videos`;
+            document.title = newTitle;
+            const h2 = document.querySelector('main .section h2');
+            if (h2){ h2.textContent = newTitle; }
+        }
+
+        function updateActiveButtons() {
+            document.getElementById('best-filter-btn')?.classList.toggle('active', isBestOnly);
+            document.querySelectorAll('.sort-button').forEach(btn => {
+                const onclick = btn.getAttribute('onclick') || '';
+                if (onclick.includes('chrono')){ btn.classList.toggle('active', currentSort === 'chrono'); }
+                else if (onclick.includes('alpha')){ btn.classList.toggle('active', currentSort === 'alpha'); }
+                else if (onclick.includes('random')){ btn.classList.toggle('active', currentSort === 'random'); }
 		});
+        }
+
+        function updateLoadMoreButton() {
+            const btn = document.getElementById('load-more-videos');
+            if (!btn){ return; }
+            btn.style.display = hasMore ? 'inline-block' : 'none';
+            btn.textContent = 'Load More Videos';
+            btn.disabled = false;
+        }
+
+        // Make functions global
+        window.loadMoreVideos = loadMoreVideos;
+        window.sortVideos = sortVideos;
+        window.toggleBestMoments = toggleBestMoments;
 	</script>
 
 	<%- include('partials/footer') %>
